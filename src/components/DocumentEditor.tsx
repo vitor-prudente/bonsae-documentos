@@ -2,6 +2,7 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import TextAlign from "@tiptap/extension-text-align";
 import Placeholder from "@tiptap/extension-placeholder";
+import { VariableNode } from "./VariableNode";
 import { EditorToolbar } from "./EditorToolbar";
 import { useCallback, useEffect, forwardRef, useImperativeHandle } from "react";
 
@@ -26,6 +27,7 @@ export const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>
         Placeholder.configure({
           placeholder: "Comece a escrever seu documento jurídico aqui...",
         }),
+        VariableNode,
       ],
       content: initialContent || "",
       onUpdate: ({ editor }) => {
@@ -54,9 +56,11 @@ export const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>
           editor
             .chain()
             .focus()
-            .insertContent(
-              `<span class="variable-badge" data-variable="${variable}">{${label || variable}}</span>&nbsp;`
-            )
+            .insertContent({
+              type: "variable",
+              attrs: { key: variable, label: label || variable },
+            })
+            .insertContent(" ")
             .run();
         }
       },
