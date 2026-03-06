@@ -49,13 +49,13 @@ export const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>
       (e: React.DragEvent) => {
         e.preventDefault();
         const variable = e.dataTransfer.getData("application/x-variable");
+        const label = e.dataTransfer.getData("application/x-variable-label");
         if (variable && editor) {
-          // Insert as styled span
           editor
             .chain()
             .focus()
             .insertContent(
-              `<span class="variable-badge" data-variable="${variable}">{{${variable}}}</span>&nbsp;`
+              `<span class="variable-badge" data-variable="${variable}">{${label || variable}}</span>&nbsp;`
             )
             .run();
         }
