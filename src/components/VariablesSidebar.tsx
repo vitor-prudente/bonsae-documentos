@@ -14,9 +14,10 @@ const variables = [
 ];
 
 export function VariablesSidebar() {
-  const handleDragStart = (e: React.DragEvent, variable: string) => {
-    e.dataTransfer.setData("text/plain", `{{${variable}}}`);
-    e.dataTransfer.setData("application/x-variable", variable);
+  const handleDragStart = (e: React.DragEvent, variable: typeof variables[number]) => {
+    e.dataTransfer.setData("text/plain", `{{${variable.key}}}`);
+    e.dataTransfer.setData("application/x-variable", variable.key);
+    e.dataTransfer.setData("application/x-variable-label", variable.label);
     e.dataTransfer.effectAllowed = "copy";
   };
 
@@ -35,7 +36,7 @@ export function VariablesSidebar() {
           <div
             key={v.key}
             draggable
-            onDragStart={(e) => handleDragStart(e, v.key)}
+            onDragStart={(e) => handleDragStart(e, v)}
             className="flex items-center gap-2 px-3 py-2.5 rounded-md bg-accent/60 hover:bg-accent cursor-grab active:cursor-grabbing transition-colors group border border-transparent hover:border-border"
           >
             <GripVertical className="h-3.5 w-3.5 text-muted-foreground opacity-40 group-hover:opacity-100 transition-opacity" />
