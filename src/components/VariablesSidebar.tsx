@@ -14,9 +14,10 @@ const variables = [
 ];
 
 export function VariablesSidebar() {
-  const handleDragStart = (e: React.DragEvent, variable: string) => {
-    e.dataTransfer.setData("text/plain", `{{${variable}}}`);
-    e.dataTransfer.setData("application/x-variable", variable);
+  const handleDragStart = (e: React.DragEvent, variable: typeof variables[number]) => {
+    e.dataTransfer.setData("text/plain", `{{${variable.key}}}`);
+    e.dataTransfer.setData("application/x-variable", variable.key);
+    e.dataTransfer.setData("application/x-variable-label", variable.label);
     e.dataTransfer.effectAllowed = "copy";
   };
 
