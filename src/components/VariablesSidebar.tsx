@@ -41,10 +41,7 @@ export function VariablesSidebar() {
           >
             <GripVertical className="h-3.5 w-3.5 text-muted-foreground opacity-40 group-hover:opacity-100 transition-opacity" />
             <div className="flex-1 min-w-0">
-              <span className="text-xs font-mono font-medium text-primary block">
-                {`{{${v.key}}}`}
-              </span>
-              <span className="text-[11px] text-muted-foreground">{v.label}</span>
+              <span className="text-sm font-medium text-foreground">{v.label}</span>
             </div>
           </div>
         ))}
