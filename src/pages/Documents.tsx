@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, FileText, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 import logoImg from "@/assets/logo-bonsae.png";
+import bonsaiImg from "@/assets/bonsai-empty.png";
 
 const STORAGE_PREFIX = "legal-doc-";
 const STORAGE_LIST_KEY = "legal-doc-list";
@@ -133,7 +134,7 @@ const Documents = () => {
       <div className="flex-1 px-6 pb-6">
         {filteredDocs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-            <FileText className="h-16 w-16 mb-4 opacity-30" />
+            <img src={bonsaiImg} alt="Bonsai" className="h-40 mb-6 opacity-70" />
             <p className="text-lg font-medium">Nenhum documento encontrado</p>
             <p className="text-sm mt-1">
               Clique em "Criar Novo Documento" para começar.
