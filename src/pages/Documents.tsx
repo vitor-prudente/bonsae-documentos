@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, FileText, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 import logoImg from "@/assets/logo-bonsae.png";
+import bonsaiImg from "@/assets/bonsai-empty.png";
 
 const STORAGE_PREFIX = "legal-doc-";
 const STORAGE_LIST_KEY = "legal-doc-list";
