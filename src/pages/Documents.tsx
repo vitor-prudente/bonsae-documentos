@@ -134,7 +134,7 @@ const Documents = () => {
       <div className="flex-1 px-6 pb-6">
         {filteredDocs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-            <img src={bonsaiImg} alt="Bonsai" className="h-80 mb-6 mix-blend-multiply" />
+            <img src={bonsaiImg} alt="Bonsai" className="h-60 mb-6 mix-blend-multiply" />
             <p className="text-lg font-medium">Nenhum documento encontrado</p>
             <p className="text-sm mt-1">
               Clique em "Criar Novo Documento" para começar.
