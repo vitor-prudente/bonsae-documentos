@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Scale, Plus, FileText, Trash2, Search } from "lucide-react";
+import { Plus, FileText, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
+import logoImg from "@/assets/logo-bonsae.png";
 
 const STORAGE_PREFIX = "legal-doc-";
 const STORAGE_LIST_KEY = "legal-doc-list";
