@@ -3,7 +3,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { VariablesSidebar } from "@/components/VariablesSidebar";
 import { SettingsSidebar } from "@/components/SettingsSidebar";
 import { DocumentEditor, DocumentEditorRef } from "@/components/DocumentEditor";
-import { Scale, Settings, ArrowLeft } from "lucide-react";
+import { Settings, ArrowLeft } from "lucide-react";
+import logoImg from "@/assets/logo-bonsae.png";
 import { toast } from "sonner";
 import {
   getDocumentList,

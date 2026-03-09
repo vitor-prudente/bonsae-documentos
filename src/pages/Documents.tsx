@@ -100,7 +100,6 @@ const Documents = () => {
         <div className="flex items-center gap-3">
           <img src={logoImg} alt="Bonsae" className="h-7" />
         </div>
-        </div>
       </header>
 
       {/* Toolbar */}
