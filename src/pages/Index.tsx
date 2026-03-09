@@ -1,18 +1,41 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { VariablesSidebar } from "@/components/VariablesSidebar";
 import { SettingsSidebar } from "@/components/SettingsSidebar";
 import { DocumentEditor, DocumentEditorRef } from "@/components/DocumentEditor";
-import { Scale, Settings } from "lucide-react";
+import { Scale, Settings, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
-
-const STORAGE_KEY = "legal-doc-editor";
+import {
+  getDocumentList,
+  saveDocumentList,
+  type SavedDocument,
+} from "@/pages/Documents";
 
 const Index = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const docId = searchParams.get("id");
+
   const [letterheadUrl, setLetterheadUrl] = useState<string | null>(null);
   const [documentTitle, setDocumentTitle] = useState("Novo Documento");
   const [showSettings, setShowSettings] = useState(true);
   const editorRef = useRef<DocumentEditorRef>(null);
   const [initialContent, setInitialContent] = useState("");
+  const [currentDocId, setCurrentDocId] = useState<string | null>(null);
+
+  // Load existing document if id is provided
+  useEffect(() => {
+    if (docId) {
+      const docs = getDocumentList();
+      const doc = docs.find((d) => d.id === docId);
+      if (doc) {
+        setDocumentTitle(doc.title);
+        setLetterheadUrl(doc.letterheadUrl);
+        setInitialContent(doc.html);
+        setCurrentDocId(doc.id);
+      }
+    }
+  }, [docId]);
 
   const handleExportPdf = useCallback(async () => {
     const element = editorRef.current?.getEditorElement();
@@ -39,32 +62,41 @@ const Index = () => {
 
   const handleSave = useCallback(() => {
     const html = editorRef.current?.getHTML() || "";
-    const data = { html, letterheadUrl, documentTitle };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    toast.success("Documento salvo no navegador!");
-  }, [letterheadUrl, documentTitle]);
+    const docs = getDocumentList();
+    const now = new Date().toISOString();
 
-  const handleLoadSaved = useCallback(() => {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      toast.error("Nenhum documento salvo encontrado.");
-      return;
+    if (currentDocId) {
+      const idx = docs.findIndex((d) => d.id === currentDocId);
+      if (idx !== -1) {
+        docs[idx] = {
+          ...docs[idx],
+          title: documentTitle,
+          html,
+          letterheadUrl,
+          updatedAt: now,
+        };
+      }
+    } else {
+      const newDoc: SavedDocument = {
+        id: crypto.randomUUID(),
+        title: documentTitle,
+        html,
+        letterheadUrl,
+        updatedAt: now,
+      };
+      docs.unshift(newDoc);
+      setCurrentDocId(newDoc.id);
     }
-    try {
-      const data = JSON.parse(raw);
-      setLetterheadUrl(data.letterheadUrl || null);
-      setDocumentTitle(data.documentTitle || "Novo Documento");
-      setInitialContent(data.html || "");
-      toast.success("Documento carregado!");
-    } catch {
-      toast.error("Erro ao carregar documento.");
-    }
-  }, []);
+
+    saveDocumentList(docs);
+    toast.success("Documento salvo!");
+  }, [letterheadUrl, documentTitle, currentDocId]);
 
   const handleClear = useCallback(() => {
     setLetterheadUrl(null);
     setDocumentTitle("Novo Documento");
     setInitialContent(" ");
+    setCurrentDocId(null);
     setTimeout(() => setInitialContent(""), 50);
     toast.success("Editor limpo.");
   }, []);
@@ -74,6 +106,13 @@ const Index = () => {
       {/* Top bar */}
       <header className="h-14 flex items-center justify-between px-4 border-b border-border bg-card shrink-0">
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate("/")}
+            className="p-2 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+            title="Voltar aos documentos"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
           <Scale className="h-5 w-5 text-primary" />
           <h1 className="text-base font-semibold text-foreground">
             Editor Jurídico
@@ -104,7 +143,6 @@ const Index = () => {
           <SettingsSidebar
             onExportPdf={handleExportPdf}
             onSave={handleSave}
-            onLoadSaved={handleLoadSaved}
             onClear={handleClear}
             letterheadUrl={letterheadUrl}
             onLetterheadUpload={setLetterheadUrl}
