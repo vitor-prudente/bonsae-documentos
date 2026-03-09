@@ -5,7 +5,6 @@ import { useRef } from "react";
 interface SettingsSidebarProps {
   onExportPdf: () => void;
   onSave: () => void;
-  onLoadSaved: () => void;
   onClear: () => void;
   letterheadUrl: string | null;
   onLetterheadUpload: (url: string) => void;
@@ -17,7 +16,6 @@ interface SettingsSidebarProps {
 export function SettingsSidebar({
   onExportPdf,
   onSave,
-  onLoadSaved,
   onClear,
   letterheadUrl,
   onLetterheadUpload,
@@ -112,11 +110,7 @@ export function SettingsSidebar({
           </label>
           <Button onClick={onSave} variant="outline" size="sm" className="w-full justify-start">
             <Save className="h-3.5 w-3.5 mr-2" />
-            Salvar no Navegador
-          </Button>
-          <Button onClick={onLoadSaved} variant="outline" size="sm" className="w-full justify-start">
-            <Upload className="h-3.5 w-3.5 mr-2" />
-            Carregar Salvo
+            Salvar Documento
           </Button>
           <Button onClick={onClear} variant="ghost" size="sm" className="w-full justify-start text-destructive hover:text-destructive">
             <Trash2 className="h-3.5 w-3.5 mr-2" />
