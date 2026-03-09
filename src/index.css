@@ -15,7 +15,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 25% 15%;
 
-    --primary: 153 50% 28%;
+    --primary: 213 100% 45%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 40 15% 93%;
@@ -32,20 +32,20 @@
 
     --border: 220 10% 88%;
     --input: 220 10% 88%;
-    --ring: 153 50% 28%;
+    --ring: 213 100% 45%;
 
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 220 15% 30%;
-    --sidebar-primary: 153 50% 28%;
+    --sidebar-primary: 213 100% 45%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 40 20% 95%;
     --sidebar-accent-foreground: 220 25% 15%;
     --sidebar-border: 220 10% 90%;
-    --sidebar-ring: 153 50% 28%;
+    --sidebar-ring: 213 100% 45%;
 
-    --variable-badge: 153 50% 28%;
+    --variable-badge: 213 100% 45%;
     --variable-badge-foreground: 0 0% 100%;
     --editor-bg: 40 25% 96%;
     --toolbar-bg: 0 0% 100%;
@@ -91,7 +91,7 @@
 .tiptap .variable-badge {
   display: inline-flex;
   align-items: center;
-  background: hsl(153 50% 28%);
+  background: hsl(213 100% 45%);
   color: white;
   padding: 1px 8px;
   border-radius: 4px;

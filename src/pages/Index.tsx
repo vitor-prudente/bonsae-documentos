@@ -3,7 +3,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { VariablesSidebar } from "@/components/VariablesSidebar";
 import { SettingsSidebar } from "@/components/SettingsSidebar";
 import { DocumentEditor, DocumentEditorRef } from "@/components/DocumentEditor";
-import { Scale, Settings, ArrowLeft } from "lucide-react";
+import { Settings, ArrowLeft } from "lucide-react";
+import logoImg from "@/assets/logo-bonsae.png";
 import { toast } from "sonner";
 import {
   getDocumentList,
@@ -113,10 +114,7 @@ const Index = () => {
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <Scale className="h-5 w-5 text-primary" />
-          <h1 className="text-base font-semibold text-foreground">
-            Editor Jurídico
-          </h1>
+          <img src={logoImg} alt="Bonsae" className="h-6" />
           <span className="text-xs text-muted-foreground">·</span>
           <span className="text-sm text-muted-foreground truncate max-w-[200px]">
             {documentTitle}
