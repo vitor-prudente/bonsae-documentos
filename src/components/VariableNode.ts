@@ -37,7 +37,7 @@ export const VariableNode = Node.create({
         class: "variable-badge",
         contenteditable: "false",
       }),
-      `{${node.attrs.label || node.attrs.key}}`,
+      node.attrs.label || node.attrs.key,
     ];
   },
 });
