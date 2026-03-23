@@ -114,7 +114,7 @@ const Index = () => {
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <img src={logoImg} alt="Bonsae" className="h-6" />
+          <img src={logoImg} alt="Bonsae" className="h-6 cursor-pointer" onClick={() => navigate("/")} />
           <span className="text-xs text-muted-foreground">·</span>
           <span className="text-sm text-muted-foreground truncate max-w-[200px]">
             {documentTitle}
