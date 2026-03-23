@@ -99,7 +99,7 @@ const Documents = () => {
       {/* Header */}
       <header className="h-14 flex items-center justify-between px-6 border-b border-border bg-card shrink-0">
         <div className="flex items-center gap-3">
-          <img src={logoImg} alt="Bonsae" className="h-7" />
+          <img src={logoImg} alt="Bonsae" className="h-7 cursor-pointer" onClick={() => navigate("/")} />
         </div>
       </header>
 
