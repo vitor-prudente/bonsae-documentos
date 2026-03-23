@@ -1,4 +1,18 @@
-import { GripVertical, User } from "lucide-react";
+import { User, CreditCard, MapPin, DollarSign, Calendar, FileText, Briefcase, BadgeCheck, Building, Gavel, type LucideIcon } from "lucide-react";
+import { variableIconMap } from "./variableIcons";
+
+const iconComponents: Record<string, LucideIcon> = {
+  user: User,
+  "id-card": CreditCard,
+  "map-pin": MapPin,
+  "dollar-sign": DollarSign,
+  calendar: Calendar,
+  "file-text": FileText,
+  briefcase: Briefcase,
+  "badge-check": BadgeCheck,
+  building: Building,
+  gavel: Gavel,
+};
 
 const variables = [
   { key: "nome_cliente", label: "Nome do Cliente" },
@@ -32,19 +46,23 @@ export function VariablesSidebar() {
         </p>
       </div>
       <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
-        {variables.map((v) => (
-          <div
-            key={v.key}
-            draggable
-            onDragStart={(e) => handleDragStart(e, v)}
-            className="flex items-center gap-2 px-3 py-2.5 rounded-md bg-accent/60 hover:bg-accent cursor-grab active:cursor-grabbing transition-colors group border border-transparent hover:border-border"
-          >
-            <User className="h-3.5 w-3.5 text-muted-foreground" />
-            <div className="flex-1 min-w-0">
-              <span className="text-sm font-medium text-foreground">{v.label}</span>
+        {variables.map((v) => {
+          const iconName = variableIconMap[v.key] || "user";
+          const IconComponent = iconComponents[iconName] || User;
+          return (
+            <div
+              key={v.key}
+              draggable
+              onDragStart={(e) => handleDragStart(e, v)}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-md bg-accent/60 hover:bg-accent cursor-grab active:cursor-grabbing transition-colors group border border-transparent hover:border-border"
+            >
+              <IconComponent className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <div className="flex-1 min-w-0">
+                <span className="text-sm font-medium text-foreground">{v.label}</span>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </aside>
   );
