@@ -1,4 +1,4 @@
-import { GripVertical } from "lucide-react";
+import { GripVertical, User } from "lucide-react";
 
 const variables = [
   { key: "nome_cliente", label: "Nome do Cliente" },
