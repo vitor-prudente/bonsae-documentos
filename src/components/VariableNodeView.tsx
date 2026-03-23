@@ -24,17 +24,21 @@ export function VariableNodeView({ node, editor, getPos }: any) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const confirmedRef = useRef(false);
 
   const iconName = variableIconMap[node.attrs.key] || "user";
   const IconComponent = iconComponents[iconName] || User;
 
   useEffect(() => {
     if (editing && inputRef.current) {
+      confirmedRef.current = false;
       inputRef.current.focus();
     }
   }, [editing]);
 
   const handleConfirm = useCallback(() => {
+    if (confirmedRef.current) return;
+    confirmedRef.current = true;
     if (!editor || typeof getPos !== "function") return;
     const pos = getPos();
     const text = value.trim();
@@ -43,8 +47,9 @@ export function VariableNodeView({ node, editor, getPos }: any) {
         .deleteRange({ from: pos, to: pos + node.nodeSize })
         .insertContentAt(pos, text)
         .run();
+    } else {
+      setEditing(false);
     }
-    setEditing(false);
   }, [editor, getPos, node.nodeSize, value]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
