@@ -91,6 +91,7 @@
 .tiptap .variable-badge {
   display: inline-flex;
   align-items: center;
+  gap: 4px;
   background: hsl(213 100% 45%);
   color: white;
   padding: 1px 8px;
@@ -101,6 +102,17 @@
   vertical-align: baseline;
   cursor: default;
   user-select: all;
+}
+
+.tiptap .variable-badge::before {
+  content: "";
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  background-image: var(--var-icon);
+  background-size: contain;
+  background-repeat: no-repeat;
+  flex-shrink: 0;
 }
 
 .tiptap p.is-editor-empty:first-child::before {

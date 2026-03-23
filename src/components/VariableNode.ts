@@ -1,4 +1,5 @@
 import { Node, mergeAttributes } from "@tiptap/core";
+import { variableIconMap, variableSvgMap } from "./variableIcons";
 
 export const VariableNode = Node.create({
   name: "variable",
@@ -29,6 +30,10 @@ export const VariableNode = Node.create({
   },
 
   renderHTML({ node, HTMLAttributes }) {
+    const iconName = variableIconMap[node.attrs.key] || "user";
+    const svg = variableSvgMap[iconName] || "";
+    const encodedSvg = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+
     return [
       "span",
       mergeAttributes(HTMLAttributes, {
@@ -36,6 +41,7 @@ export const VariableNode = Node.create({
         "data-label": node.attrs.label,
         class: "variable-badge",
         contenteditable: "false",
+        style: `--var-icon: url("${encodedSvg}")`,
       }),
       node.attrs.label || node.attrs.key,
     ];
