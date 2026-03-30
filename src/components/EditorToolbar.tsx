@@ -158,33 +158,42 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         </button>
 
         {showColorPicker && (
-          <div className="absolute top-full left-0 mt-1 p-2 bg-card border border-border rounded-lg shadow-lg z-50 grid grid-cols-10 gap-1" style={{ width: "260px" }}>
-            {COLOR_PALETTE.map((color) => (
+          <div className="absolute top-full left-0 mt-1 p-3 bg-card border border-border rounded-lg shadow-lg z-50" style={{ width: "240px" }}>
+            {COLOR_PALETTE.map((group) => (
+              <div key={group.label} className="mb-2 last:mb-0">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-medium">{group.label}</p>
+                <div className="flex gap-1.5 flex-wrap">
+                  {group.colors.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => {
+                        editor.chain().focus().setColor(color).run();
+                        setShowColorPicker(false);
+                      }}
+                      className={cn(
+                        "w-6 h-6 rounded-md border border-border/40 hover:scale-110 transition-all hover:shadow-md",
+                        currentColor === color && "ring-2 ring-primary ring-offset-1"
+                      )}
+                      style={{ backgroundColor: color }}
+                      title={color}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+            <div className="border-t border-border mt-2 pt-2">
               <button
-                key={color}
                 type="button"
                 onClick={() => {
-                  editor.chain().focus().setColor(color).run();
+                  editor.chain().focus().unsetColor().run();
                   setShowColorPicker(false);
                 }}
-                className={cn(
-                  "w-5 h-5 rounded-full border border-border/50 hover:scale-125 transition-transform",
-                  currentColor === color && "ring-2 ring-primary ring-offset-1"
-                )}
-                style={{ backgroundColor: color }}
-                title={color}
-              />
-            ))}
-            <button
-              type="button"
-              onClick={() => {
-                editor.chain().focus().unsetColor().run();
-                setShowColorPicker(false);
-              }}
-              className="col-span-10 mt-1 text-xs text-muted-foreground hover:text-foreground py-1 rounded hover:bg-accent transition-colors"
-            >
-              Remover cor
-            </button>
+                className="w-full text-xs text-muted-foreground hover:text-foreground py-1 rounded hover:bg-accent transition-colors"
+              >
+                Remover cor
+              </button>
+            </div>
           </div>
         )}
       </div>
