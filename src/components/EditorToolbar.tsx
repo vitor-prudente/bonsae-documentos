@@ -153,7 +153,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
               : "text-muted-foreground hover:bg-accent hover:text-foreground"
           )}
         >
-          <Palette className="h-4 w-4" />
+          <span className="text-sm font-bold leading-none" style={{ fontFamily: 'serif' }}>A</span>
           <div className="w-4 h-1 rounded-full" style={{ backgroundColor: currentColor }} />
         </button>
 
