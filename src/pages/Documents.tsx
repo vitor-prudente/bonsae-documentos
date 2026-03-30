@@ -149,15 +149,16 @@ const Documents = () => {
                 className="group cursor-pointer rounded-lg border border-border bg-card overflow-hidden hover:ring-2 hover:ring-primary/50 transition-all"
               >
                 {/* Preview area */}
-                <div className="aspect-[4/3] bg-muted flex items-center justify-center overflow-hidden relative">
-                  {doc.letterheadUrl ? (
-                    <img
-                      src={doc.letterheadUrl}
-                      alt=""
-                      className="w-full h-full object-cover opacity-60"
+                <div className="aspect-[4/3] bg-white flex items-start overflow-hidden relative">
+                  {doc.html ? (
+                    <div
+                      className="w-full h-full origin-top-left pointer-events-none document-preview-mini"
+                      dangerouslySetInnerHTML={{ __html: doc.html }}
                     />
                   ) : (
-                    <FileText className="h-12 w-12 text-muted-foreground/30" />
+                    <div className="w-full h-full flex items-center justify-center bg-muted">
+                      <FileText className="h-12 w-12 text-muted-foreground/30" />
+                    </div>
                   )}
                   {/* Delete button */}
                   <button
