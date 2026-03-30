@@ -164,3 +164,24 @@
   height: 0;
   font-style: italic;
 }
+
+.document-preview-mini {
+  transform: scale(0.35);
+  transform-origin: top left;
+  width: 285%;
+  padding: 16px 24px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #1a1a1a;
+  overflow: hidden;
+}
+
+.document-preview-mini h1,
+.document-preview-mini h2,
+.document-preview-mini h3 {
+  margin-bottom: 4px;
+}
+
+.document-preview-mini p {
+  margin-bottom: 2px;
+}
