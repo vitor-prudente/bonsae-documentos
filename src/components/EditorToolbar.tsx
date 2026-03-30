@@ -11,7 +11,7 @@ import {
   AlignJustify,
   Undo,
   Redo,
-  Palette,
+  
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
