@@ -3,6 +3,8 @@ import StarterKit from "@tiptap/starter-kit";
 import TextAlign from "@tiptap/extension-text-align";
 import { TextStyle } from "@tiptap/extension-text-style";
 import Color from "@tiptap/extension-color";
+import FontFamily from "@tiptap/extension-font-family";
+import FontSize from "@tiptap/extension-font-size";
 import Placeholder from "@tiptap/extension-placeholder";
 import { VariableNode } from "./VariableNode";
 import { EditorToolbar } from "./EditorToolbar";
@@ -27,6 +29,8 @@ export const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>
         StarterKit,
         TextStyle,
         Color,
+        FontFamily,
+        FontSize,
         TextAlign.configure({ types: ["heading", "paragraph"] }),
         Placeholder.configure({
           placeholder: "Comece a escrever seu documento jurídico aqui...",
