@@ -1,6 +1,8 @@
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import TextAlign from "@tiptap/extension-text-align";
+import { TextStyle } from "@tiptap/extension-text-style";
+import Color from "@tiptap/extension-color";
 import Placeholder from "@tiptap/extension-placeholder";
 import { VariableNode } from "./VariableNode";
 import { EditorToolbar } from "./EditorToolbar";
@@ -23,6 +25,8 @@ export const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>
     const editor = useEditor({
       extensions: [
         StarterKit,
+        TextStyle,
+        Color,
         TextAlign.configure({ types: ["heading", "paragraph"] }),
         Placeholder.configure({
           placeholder: "Comece a escrever seu documento jurídico aqui...",
