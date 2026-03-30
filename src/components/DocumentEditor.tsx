@@ -29,6 +29,8 @@ export const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>
         StarterKit,
         TextStyle,
         Color,
+        FontFamily,
+        FontSize,
         TextAlign.configure({ types: ["heading", "paragraph"] }),
         Placeholder.configure({
           placeholder: "Comece a escrever seu documento jurídico aqui...",
