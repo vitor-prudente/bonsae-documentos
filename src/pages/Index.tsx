@@ -4,27 +4,33 @@ import { VariablesSidebar } from "@/components/VariablesSidebar";
 import { SettingsSidebar } from "@/components/SettingsSidebar";
 import { DocumentEditor, DocumentEditorRef } from "@/components/DocumentEditor";
 import { Settings, ArrowLeft } from "lucide-react";
-import logoImg from "@/assets/logo-bonsae.png";
 import { toast } from "sonner";
 import {
   getDocumentList,
   saveDocumentList,
+  getTemplateList,
+  saveTemplateList,
   type SavedDocument,
+  type SavedTemplate,
 } from "@/pages/Documents";
 
 const Index = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const docId = searchParams.get("id");
+  const isTemplate = searchParams.get("type") === "template";
 
   const [letterheadUrl, setLetterheadUrl] = useState<string | null>(null);
-  const [documentTitle, setDocumentTitle] = useState("Novo Documento");
+  const [documentTitle, setDocumentTitle] = useState(
+    isTemplate ? "Novo Template" : "Novo Documento"
+  );
   const [showSettings, setShowSettings] = useState(true);
   const editorRef = useRef<DocumentEditorRef>(null);
   const [initialContent, setInitialContent] = useState("");
   const [currentDocId, setCurrentDocId] = useState<string | null>(null);
+  const [savingAsTemplate, setSavingAsTemplate] = useState(isTemplate);
 
-  // Load existing document if id is provided
+  // Load existing document or template
   useEffect(() => {
     if (docId) {
       const docs = getDocumentList();
@@ -34,6 +40,18 @@ const Index = () => {
         setLetterheadUrl(doc.letterheadUrl);
         setInitialContent(doc.html);
         setCurrentDocId(doc.id);
+        setSavingAsTemplate(false);
+        return;
+      }
+      // Check templates
+      const templates = getTemplateList();
+      const tmpl = templates.find((t) => t.id === docId);
+      if (tmpl) {
+        setDocumentTitle(tmpl.title);
+        setLetterheadUrl(tmpl.letterheadUrl);
+        setInitialContent(tmpl.html);
+        setCurrentDocId(tmpl.id);
+        setSavingAsTemplate(true);
       }
     }
   }, [docId]);
@@ -41,7 +59,6 @@ const Index = () => {
   const handleExportPdf = useCallback(async () => {
     const element = editorRef.current?.getEditorElement();
     if (!element) return;
-
     toast.info("Gerando PDF...");
     try {
       const html2pdf = (await import("html2pdf.js")).default;
@@ -63,69 +80,80 @@ const Index = () => {
 
   const handleSave = useCallback(() => {
     const html = editorRef.current?.getHTML() || "";
-    const docs = getDocumentList();
     const now = new Date().toISOString();
 
-    if (currentDocId) {
-      const idx = docs.findIndex((d) => d.id === currentDocId);
-      if (idx !== -1) {
-        docs[idx] = {
-          ...docs[idx],
-          title: documentTitle,
-          html,
-          letterheadUrl,
-          updatedAt: now,
-        };
+    if (savingAsTemplate) {
+      const templates = getTemplateList();
+      if (currentDocId) {
+        const idx = templates.findIndex((t) => t.id === currentDocId);
+        if (idx !== -1) {
+          templates[idx] = { ...templates[idx], title: documentTitle, html, letterheadUrl, updatedAt: now };
+        } else {
+          const newT: SavedTemplate = { id: crypto.randomUUID(), title: documentTitle, html, letterheadUrl, updatedAt: now };
+          templates.unshift(newT);
+          setCurrentDocId(newT.id);
+        }
+      } else {
+        const newT: SavedTemplate = { id: crypto.randomUUID(), title: documentTitle, html, letterheadUrl, updatedAt: now };
+        templates.unshift(newT);
+        setCurrentDocId(newT.id);
       }
+      saveTemplateList(templates);
+      toast.success("Template salvo!");
     } else {
-      const newDoc: SavedDocument = {
-        id: crypto.randomUUID(),
-        title: documentTitle,
-        html,
-        letterheadUrl,
-        updatedAt: now,
-      };
-      docs.unshift(newDoc);
-      setCurrentDocId(newDoc.id);
+      const docs = getDocumentList();
+      if (currentDocId) {
+        const idx = docs.findIndex((d) => d.id === currentDocId);
+        if (idx !== -1) {
+          docs[idx] = { ...docs[idx], title: documentTitle, html, letterheadUrl, updatedAt: now };
+        }
+      } else {
+        const newDoc: SavedDocument = { id: crypto.randomUUID(), title: documentTitle, html, letterheadUrl, updatedAt: now };
+        docs.unshift(newDoc);
+        setCurrentDocId(newDoc.id);
+      }
+      saveDocumentList(docs);
+      toast.success("Documento salvo!");
     }
-
-    saveDocumentList(docs);
-    toast.success("Documento salvo!");
-  }, [letterheadUrl, documentTitle, currentDocId]);
+  }, [letterheadUrl, documentTitle, currentDocId, savingAsTemplate]);
 
   const handleClear = useCallback(() => {
     setLetterheadUrl(null);
-    setDocumentTitle("Novo Documento");
+    setDocumentTitle(savingAsTemplate ? "Novo Template" : "Novo Documento");
     setInitialContent(" ");
     setCurrentDocId(null);
     setTimeout(() => setInitialContent(""), 50);
     toast.success("Editor limpo.");
-  }, []);
+  }, [savingAsTemplate]);
 
   return (
-    <div className="flex flex-col h-screen">
-      {/* Top bar */}
-      <header className="h-14 flex items-center justify-between px-4 border-b border-border bg-card shrink-0">
+    <div className="flex flex-col h-full">
+      {/* Compact top bar */}
+      <header className="h-12 flex items-center justify-between px-4 border-b border-border bg-card shrink-0">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate("/")}
-            className="p-2 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-            title="Voltar aos documentos"
+            className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+            title="Voltar"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-4 w-4" />
           </button>
-          <img src={logoImg} alt="Bonsae" className="h-6 cursor-pointer" onClick={() => navigate("/")} />
           <span className="text-xs text-muted-foreground">·</span>
-          <span className="text-sm text-muted-foreground truncate max-w-[200px]">
+          {savingAsTemplate && (
+            <span className="text-[10px] uppercase tracking-wider font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded">
+              Template
+            </span>
+          )}
+          <span className="text-sm text-muted-foreground truncate max-w-[250px]">
             {documentTitle}
           </span>
         </div>
         <button
           onClick={() => setShowSettings(!showSettings)}
-          className="p-2 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+          className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
           title="Configurações"
         >
-          <Settings className="h-5 w-5" />
+          <Settings className="h-4 w-4" />
         </button>
       </header>
 
