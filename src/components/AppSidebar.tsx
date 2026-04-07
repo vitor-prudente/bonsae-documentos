@@ -111,12 +111,12 @@ export function AppSidebar() {
       {/* Create button */}
       <div className="px-3 mb-2">
         <Button
-          onClick={() => navigate("/editor")}
+          onClick={() => navigate("/editor?type=template")}
           className="w-full gap-2 justify-start"
           size="default"
         >
           <Plus className="h-4 w-4" />
-          Criar Documento
+          Criar Template
         </Button>
       </div>
 
@@ -126,16 +126,16 @@ export function AppSidebar() {
           Geral
         </p>
         <NavItem
-          icon={<FileText className="h-4 w-4" />}
-          label="Documentos"
-          active={isDocuments}
-          onClick={() => navigate("/")}
-        />
-        <NavItem
           icon={<LayoutTemplate className="h-4 w-4" />}
           label="Templates"
           active={isTemplates}
           onClick={() => navigate("/?tab=templates")}
+        />
+        <NavItem
+          icon={<FileText className="h-4 w-4" />}
+          label="Documentos"
+          active={isDocuments}
+          onClick={() => navigate("/")}
         />
         <NavItem
           icon={<Variable className="h-4 w-4" />}
