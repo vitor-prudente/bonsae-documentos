@@ -129,13 +129,13 @@ export function AppSidebar() {
           icon={<LayoutTemplate className="h-4 w-4" />}
           label="Templates"
           active={isTemplates}
-          onClick={() => navigate("/?tab=templates")}
+          onClick={() => navigate("/")}
         />
         <NavItem
           icon={<FileText className="h-4 w-4" />}
           label="Documentos"
           active={isDocuments}
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/?tab=documents")}
         />
         <NavItem
           icon={<Variable className="h-4 w-4" />}
