@@ -136,6 +136,25 @@ function DocumentsTab() {
     toast.success("Documento excluído.");
   };
 
+  const templates = getTemplateList();
+
+  const handleNewFromTemplate = (t: SavedTemplate) => {
+    const newDoc: SavedDocument = {
+      id: crypto.randomUUID(),
+      title: `${t.title} - Documento`,
+      html: t.html,
+      letterheadUrl: t.letterheadUrl,
+      updatedAt: new Date().toISOString(),
+    };
+    const docs = getDocumentList();
+    docs.unshift(newDoc);
+    saveDocumentList(docs);
+    navigate(`/editor?id=${newDoc.id}`);
+    toast.success("Documento criado a partir do template.");
+  };
+
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+
   return (
     <>
       <div className="flex items-center gap-3 mb-6">
@@ -149,16 +168,53 @@ function DocumentsTab() {
             className="w-full pl-9 pr-3 py-2 text-sm bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
           />
         </div>
-        <span className="text-sm text-muted-foreground">
-          {documents.length} documento{documents.length !== 1 ? "s" : ""}
-        </span>
+        <Button onClick={() => setShowTemplatePicker(true)} size="sm" className="gap-2">
+          <Plus className="h-4 w-4" />
+          Novo Documento
+        </Button>
       </div>
+
+      {/* Template picker modal */}
+      {showTemplatePicker && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={() => setShowTemplatePicker(false)}>
+          <div className="bg-card border border-border rounded-xl shadow-xl max-w-lg w-full mx-4 p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-foreground mb-1">Escolha um Template</h3>
+            <p className="text-sm text-muted-foreground mb-4">Selecione o template base para criar seu documento.</p>
+            {templates.length === 0 ? (
+              <div className="text-center py-8">
+                <LayoutTemplate className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">Nenhum template disponível.</p>
+                <Button onClick={() => { setShowTemplatePicker(false); navigate("/?tab=templates"); }} variant="outline" size="sm" className="mt-3 gap-2">
+                  <Plus className="h-4 w-4" />
+                  Criar Template
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                {templates.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => handleNewFromTemplate(t)}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-border hover:border-primary/40 hover:bg-accent/50 transition-all text-left"
+                  >
+                    <LayoutTemplate className="h-5 w-5 text-primary shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-foreground truncate">{t.title}</p>
+                      <p className="text-xs text-muted-foreground">{formatDate(t.updatedAt)}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {filteredDocs.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
           <img src={bonsaiImg} alt="Bonsai" className="h-60 mb-6 mix-blend-multiply" />
           <p className="text-lg font-medium">Nenhum documento encontrado</p>
-          <p className="text-sm mt-1">Clique em "Criar Documento" para começar.</p>
+          <p className="text-sm mt-1">Crie um documento a partir de um template existente.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -236,20 +292,8 @@ function TemplatesTab() {
     navigate("/editor?type=template");
   };
 
-  const handleUseTemplate = (t: SavedTemplate) => {
-    // Create a new document from this template
-    const newDoc: SavedDocument = {
-      id: crypto.randomUUID(),
-      title: `${t.title} - Cópia`,
-      html: t.html,
-      letterheadUrl: t.letterheadUrl,
-      updatedAt: new Date().toISOString(),
-    };
-    const docs = getDocumentList();
-    docs.unshift(newDoc);
-    saveDocumentList(docs);
-    navigate(`/editor?id=${newDoc.id}`);
-    toast.success("Documento criado a partir do template.");
+  const handleEditTemplate = (t: SavedTemplate) => {
+    navigate(`/editor?id=${t.id}&type=template`);
   };
 
   return (
@@ -286,7 +330,7 @@ function TemplatesTab() {
           {filteredTemplates.map((t) => (
             <div
               key={t.id}
-              onClick={() => handleUseTemplate(t)}
+              onClick={() => handleEditTemplate(t)}
               className="group cursor-pointer rounded-xl border border-border bg-card overflow-hidden hover:ring-2 hover:ring-primary/40 transition-all hover:shadow-md"
             >
               <div className="aspect-[4/3] bg-white flex items-start overflow-hidden relative">
@@ -440,7 +484,7 @@ function VariablesTab() {
 
 const Documents = () => {
   const [searchParams] = useSearchParams();
-  const tab = searchParams.get("tab") || "documents";
+  const tab = searchParams.get("tab") || "templates";
 
   const titles: Record<string, string> = {
     documents: "Documentos",
