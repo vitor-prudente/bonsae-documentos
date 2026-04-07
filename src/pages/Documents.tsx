@@ -330,7 +330,7 @@ function TemplatesTab() {
           {filteredTemplates.map((t) => (
             <div
               key={t.id}
-              onClick={() => handleUseTemplate(t)}
+              onClick={() => handleEditTemplate(t)}
               className="group cursor-pointer rounded-xl border border-border bg-card overflow-hidden hover:ring-2 hover:ring-primary/40 transition-all hover:shadow-md"
             >
               <div className="aspect-[4/3] bg-white flex items-start overflow-hidden relative">
