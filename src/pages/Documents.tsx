@@ -292,20 +292,8 @@ function TemplatesTab() {
     navigate("/editor?type=template");
   };
 
-  const handleUseTemplate = (t: SavedTemplate) => {
-    // Create a new document from this template
-    const newDoc: SavedDocument = {
-      id: crypto.randomUUID(),
-      title: `${t.title} - Cópia`,
-      html: t.html,
-      letterheadUrl: t.letterheadUrl,
-      updatedAt: new Date().toISOString(),
-    };
-    const docs = getDocumentList();
-    docs.unshift(newDoc);
-    saveDocumentList(docs);
-    navigate(`/editor?id=${newDoc.id}`);
-    toast.success("Documento criado a partir do template.");
+  const handleEditTemplate = (t: SavedTemplate) => {
+    navigate(`/editor?id=${t.id}&type=template`);
   };
 
   return (
