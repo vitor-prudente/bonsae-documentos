@@ -88,12 +88,12 @@ export function AppSidebar() {
     };
   }, []);
 
-  const currentPath = location.pathname + location.search;
-  const isDocuments =
-    location.pathname === "/" &&
-    !location.search.includes("tab=templates") &&
-    !location.search.includes("tab=variables");
-  const isTemplates = location.search.includes("tab=templates");
+  const isDocuments = location.search.includes("tab=documents");
+  const isTemplates =
+    (location.pathname === "/" &&
+      !location.search.includes("tab=documents") &&
+      !location.search.includes("tab=variables")) ||
+    location.search.includes("tab=templates");
   const isVariables = location.search.includes("tab=variables");
 
   return (
