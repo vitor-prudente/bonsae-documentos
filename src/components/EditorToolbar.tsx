@@ -138,7 +138,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
       <div className="relative flex items-center gap-0.5" ref={sizePickerRef}>
         <button
           type="button"
-          onClick={() => setFontSize(Math.max(8, currentSize - 1))}
+          onMouseDown={(e) => { e.preventDefault(); setFontSize(Math.max(8, currentSize - 1)); }}
           className="p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
           title="Diminuir"
         >
