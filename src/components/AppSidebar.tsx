@@ -138,7 +138,7 @@ export function AppSidebar() {
           onClick={() => navigate("/?tab=documents")}
         />
         <NavItem
-          icon={<Variable className="h-4 w-4" />}
+          icon={<Braces className="h-4 w-4" />}
           label="Variáveis"
           active={isVariables}
           onClick={() => navigate("/?tab=variables")}
