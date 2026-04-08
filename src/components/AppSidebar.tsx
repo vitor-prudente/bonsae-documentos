@@ -4,7 +4,7 @@ import {
   Plus,
   FileText,
   LayoutTemplate,
-  Variable,
+  Braces,
   Pin,
   ChevronRight,
 } from "lucide-react";
