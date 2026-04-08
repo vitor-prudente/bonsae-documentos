@@ -317,13 +317,9 @@ function TemplatesTab() {
 
       {filteredTemplates.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-          <LayoutTemplate className="h-16 w-16 mb-4 text-muted-foreground/30" />
+          <img src={bonsaiImg} alt="Bonsai" className="h-60 mb-6 mix-blend-multiply" />
           <p className="text-lg font-medium">Nenhum template criado</p>
-          <p className="text-sm mt-1">Templates são bases reutilizáveis para seus documentos.</p>
-          <Button onClick={handleCreateTemplate} className="mt-4 gap-2">
-            <Plus className="h-4 w-4" />
-            Criar Primeiro Template
-          </Button>
+          <p className="text-sm mt-1">Crie um template para começar a gerar documentos.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
