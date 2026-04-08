@@ -154,7 +154,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         </button>
         <button
           type="button"
-          onClick={() => setFontSize(Math.min(72, currentSize + 1))}
+          onMouseDown={(e) => { e.preventDefault(); setFontSize(Math.min(72, currentSize + 1)); }}
           className="p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
           title="Aumentar"
         >
