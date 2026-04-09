@@ -43,17 +43,24 @@ export const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>
       },
     });
 
-    useImperativeHandle(ref, () => ({
-      getHTML: () => editor?.getHTML() || "",
-      setContent: (html: string) => editor?.commands.setContent(html),
-      getEditorElement: () => document.getElementById("editor-print-area"),
-    }));
+    useImperativeHandle(
+      ref,
+      () => ({
+        getHTML: () => editor?.getHTML() || "",
+        setContent: (html: string) => editor?.commands.setContent(html),
+        getEditorElement: () => document.getElementById("editor-print-area"),
+      }),
+      [editor]
+    );
 
     useEffect(() => {
-      if (editor && initialContent) {
-        editor.commands.setContent(initialContent);
+      if (!editor || initialContent === undefined) return;
+      const incomingContent = initialContent || "";
+      const currentContent = editor.getHTML();
+      if (incomingContent !== currentContent) {
+        editor.commands.setContent(incomingContent, false);
       }
-    }, [initialContent]);
+    }, [editor, initialContent]);
 
     const handleDrop = useCallback(
       (e: React.DragEvent) => {
@@ -81,6 +88,28 @@ export const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>
         e.dataTransfer.dropEffect = "copy";
       }
     };
+
+    useEffect(() => {
+      const handleInsertVariable = (event: Event) => {
+        const customEvent = event as CustomEvent<{ key: string; label: string }>;
+        if (!editor || !customEvent.detail?.key) return;
+        editor
+          .chain()
+          .focus()
+          .insertContent({
+            type: "variable",
+            attrs: {
+              key: customEvent.detail.key,
+              label: customEvent.detail.label || customEvent.detail.key,
+            },
+          })
+          .insertContent(" ")
+          .run();
+      };
+
+      window.addEventListener("insert-variable", handleInsertVariable);
+      return () => window.removeEventListener("insert-variable", handleInsertVariable);
+    }, [editor]);
 
     return (
       <div className="flex-1 flex flex-col min-w-0">

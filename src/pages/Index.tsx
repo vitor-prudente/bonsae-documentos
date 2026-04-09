@@ -5,6 +5,7 @@ import { SettingsSidebar } from "@/components/SettingsSidebar";
 import { DocumentEditor, DocumentEditorRef } from "@/components/DocumentEditor";
 import { Settings, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import { getPinnedTemplates, togglePinTemplate } from "@/components/AppSidebar";
 import {
   getDocumentList,
   saveDocumentList,
@@ -29,6 +30,8 @@ const Index = () => {
   const [initialContent, setInitialContent] = useState("");
   const [currentDocId, setCurrentDocId] = useState<string | null>(null);
   const [savingAsTemplate, setSavingAsTemplate] = useState(isTemplate);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isTemplatePinned, setIsTemplatePinned] = useState(false);
 
   // Load existing document or template
   useEffect(() => {
@@ -56,18 +59,29 @@ const Index = () => {
     }
   }, [docId]);
 
+  useEffect(() => {
+    if (!savingAsTemplate || !currentDocId) {
+      setIsTemplatePinned(false);
+      return;
+    }
+    const pinned = getPinnedTemplates();
+    setIsTemplatePinned(pinned.some((p) => p.id === currentDocId));
+  }, [savingAsTemplate, currentDocId]);
+
   const handleExportPdf = useCallback(async () => {
+    if (isExporting) return;
     const element = editorRef.current?.getEditorElement();
     if (!element) return;
+    setIsExporting(true);
     toast.info("Gerando PDF...");
     try {
       const html2pdf = (await import("html2pdf.js")).default;
-      html2pdf()
+      await html2pdf()
         .set({
           margin: [10, 10, 10, 10],
           filename: `${documentTitle || "documento"}.pdf`,
           image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true },
+          html2canvas: { scale: 1.5, useCORS: true },
           jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
         })
         .from(element)
@@ -75,8 +89,10 @@ const Index = () => {
       toast.success("PDF gerado com sucesso!");
     } catch {
       toast.error("Erro ao gerar PDF.");
+    } finally {
+      setIsExporting(false);
     }
-  }, [documentTitle]);
+  }, [documentTitle, isExporting]);
 
   const handleSave = useCallback(() => {
     const html = editorRef.current?.getHTML() || "";
@@ -118,13 +134,48 @@ const Index = () => {
   }, [letterheadUrl, documentTitle, currentDocId, savingAsTemplate]);
 
   const handleClear = useCallback(() => {
+    const shouldClear = window.confirm("Tem certeza que deseja limpar todo o conteúdo atual?");
+    if (!shouldClear) return;
+
     setLetterheadUrl(null);
     setDocumentTitle(savingAsTemplate ? "Novo Template" : "Novo Documento");
-    setInitialContent(" ");
+    setInitialContent("");
     setCurrentDocId(null);
-    setTimeout(() => setInitialContent(""), 50);
+    setIsTemplatePinned(false);
+    editorRef.current?.setContent("");
     toast.success("Editor limpo.");
   }, [savingAsTemplate]);
+
+  const handleToggleTemplatePin = useCallback(() => {
+    if (!savingAsTemplate || !currentDocId) return;
+
+    togglePinTemplate({ id: currentDocId, title: documentTitle });
+    const pinned = getPinnedTemplates();
+    const nowPinned = pinned.some((p) => p.id === currentDocId);
+    setIsTemplatePinned(nowPinned);
+    window.dispatchEvent(new Event("pinned-updated"));
+    toast.success(nowPinned ? "Template fixado." : "Template desafixado.");
+  }, [savingAsTemplate, currentDocId, documentTitle]);
+
+  const handleDeleteTemplate = useCallback(() => {
+    if (!savingAsTemplate || !currentDocId) return;
+
+    const shouldDelete = window.confirm("Tem certeza que deseja excluir este template?");
+    if (!shouldDelete) return;
+
+    const templates = getTemplateList();
+    const updatedTemplates = templates.filter((template) => template.id !== currentDocId);
+    saveTemplateList(updatedTemplates);
+
+    const pinned = getPinnedTemplates();
+    if (pinned.some((pin) => pin.id === currentDocId)) {
+      togglePinTemplate({ id: currentDocId, title: documentTitle });
+      window.dispatchEvent(new Event("pinned-updated"));
+    }
+
+    toast.success("Template excluído.");
+    navigate("/?tab=templates");
+  }, [savingAsTemplate, currentDocId, documentTitle, navigate]);
 
   return (
     <div className="flex flex-col h-full">
@@ -170,11 +221,17 @@ const Index = () => {
             onExportPdf={handleExportPdf}
             onSave={handleSave}
             onClear={handleClear}
+            onToggleTemplatePin={handleToggleTemplatePin}
+            onDeleteTemplate={handleDeleteTemplate}
             letterheadUrl={letterheadUrl}
             onLetterheadUpload={setLetterheadUrl}
             onLetterheadRemove={() => setLetterheadUrl(null)}
             documentTitle={documentTitle}
             onDocumentTitleChange={setDocumentTitle}
+            isExporting={isExporting}
+            isTemplateMode={savingAsTemplate}
+            isTemplatePinned={isTemplatePinned}
+            canManageTemplate={Boolean(currentDocId)}
           />
         )}
       </div>

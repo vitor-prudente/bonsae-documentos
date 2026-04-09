@@ -42,10 +42,42 @@ interface EditorToolbarProps {
   editor: Editor | null;
 }
 
+interface ToolButtonProps {
+  onClick: () => void;
+  isActive?: boolean;
+  title: string;
+  children: React.ReactNode;
+  disabled?: boolean;
+}
+
+function ToolButton({ onClick, isActive, title, children, disabled }: ToolButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      disabled={disabled}
+      className={cn(
+        "p-2 rounded-md transition-colors disabled:opacity-45 disabled:cursor-not-allowed",
+        isActive
+          ? "bg-primary/10 text-primary"
+          : "text-muted-foreground hover:bg-accent hover:text-foreground"
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Divider() {
+  return <div className="w-px h-6 bg-border mx-1" />;
+}
+
 export function EditorToolbar({ editor }: EditorToolbarProps) {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showFontPicker, setShowFontPicker] = useState(false);
   const [showSizePicker, setShowSizePicker] = useState(false);
+  const [, forceRender] = useState(0);
   const colorPickerRef = useRef<HTMLDivElement>(null);
   const fontPickerRef = useRef<HTMLDivElement>(null);
   const sizePickerRef = useRef<HTMLDivElement>(null);
@@ -60,44 +92,68 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (!editor) return;
+
+    const rerenderToolbar = () => forceRender((value) => value + 1);
+    editor.on("transaction", rerenderToolbar);
+    editor.on("selectionUpdate", rerenderToolbar);
+
+    return () => {
+      editor.off("transaction", rerenderToolbar);
+      editor.off("selectionUpdate", rerenderToolbar);
+    };
+  }, [editor]);
+
   if (!editor) return null;
 
   const currentColor = editor.getAttributes("textStyle").color || "#000000";
   const currentFont = editor.getAttributes("textStyle").fontFamily || "Arial";
-  const currentSizeRaw = editor.getAttributes("textStyle").fontSize;
-  const currentSize = currentSizeRaw ? parseInt(currentSizeRaw) : 12;
-
-  const setFontSize = (size: number) => {
-    editor.chain().focus().setFontSize(`${size}px`).run();
+  const getCurrentFontSize = () => {
+    const fontSizeRaw = editor.getAttributes("textStyle").fontSize;
+    const parsed = fontSizeRaw ? Number.parseInt(fontSizeRaw, 10) : Number.NaN;
+    return Number.isFinite(parsed) ? parsed : 12;
   };
 
-  const ToolButton = ({
-    onClick,
-    isActive,
-    children,
-    title,
-  }: {
-    onClick: () => void;
-    isActive?: boolean;
-    children: React.ReactNode;
-    title: string;
-  }) => (
-    <button
-      type="button"
-      onClick={onClick}
-      title={title}
-      className={cn(
-        "p-2 rounded-md transition-colors",
-        isActive
-          ? "bg-primary/10 text-primary"
-          : "text-muted-foreground hover:bg-accent hover:text-foreground"
-      )}
-    >
-      {children}
-    </button>
-  );
+  const currentSize = getCurrentFontSize();
 
-  const Divider = () => <div className="w-px h-6 bg-border mx-1" />;
+  const setFontSize = (size: number) => {
+    const normalizedSize = `${size}px`;
+    const { from, empty, $from } = editor.state.selection;
+
+    if (!empty) {
+      editor.chain().focus().setMark("textStyle", { fontSize: normalizedSize }).run();
+      return;
+    }
+
+    // When there is no selection, apply to the whole current text block.
+    const blockStart = $from.start();
+    const blockEnd = $from.end();
+
+    if (blockEnd > blockStart) {
+      editor
+        .chain()
+        .focus()
+        .setTextSelection({ from: blockStart, to: blockEnd })
+        .setMark("textStyle", { fontSize: normalizedSize })
+        .setTextSelection(from)
+        .run();
+      return;
+    }
+
+    // Last fallback for edge cases.
+    editor.chain().focus().setMark("textStyle", { fontSize: normalizedSize }).run();
+  };
+
+  const adjustFontSize = (delta: number) => {
+    const nextSize = Math.max(8, Math.min(72, getCurrentFontSize() + delta));
+    setFontSize(nextSize);
+  };
+
+  const canUndo = editor.can().chain().focus().undo().run();
+  const canRedo = editor.can().chain().focus().redo().run();
+  const canBulletList = editor.can().chain().focus().toggleBulletList().run();
+  const canOrderedList = editor.can().chain().focus().toggleOrderedList().run();
 
   return (
     <div className="flex items-center gap-0.5 px-3 py-2 bg-toolbar-bg border-b border-border flex-wrap">
@@ -138,7 +194,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
       <div className="relative flex items-center gap-0.5" ref={sizePickerRef}>
         <button
           type="button"
-          onMouseDown={(e) => { e.preventDefault(); setFontSize(Math.max(8, currentSize - 1)); }}
+          onClick={() => adjustFontSize(-1)}
           className="p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
           title="Diminuir"
         >
@@ -154,7 +210,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         </button>
         <button
           type="button"
-          onMouseDown={(e) => { e.preventDefault(); setFontSize(Math.min(72, currentSize + 1)); }}
+          onClick={() => adjustFontSize(1)}
           className="p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
           title="Aumentar"
         >
@@ -202,6 +258,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         onClick={() => editor.chain().focus().toggleBulletList().run()}
         isActive={editor.isActive("bulletList")}
         title="Lista"
+        disabled={!canBulletList}
       >
         <List className="h-4 w-4" />
       </ToolButton>
@@ -209,6 +266,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
         isActive={editor.isActive("orderedList")}
         title="Lista Numerada"
+        disabled={!canOrderedList}
       >
         <ListOrdered className="h-4 w-4" />
       </ToolButton>
@@ -306,10 +364,10 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
 
       <Divider />
 
-      <ToolButton onClick={() => editor.chain().focus().undo().run()} title="Desfazer">
+      <ToolButton onClick={() => editor.chain().focus().undo().run()} title="Desfazer" disabled={!canUndo}>
         <Undo className="h-4 w-4" />
       </ToolButton>
-      <ToolButton onClick={() => editor.chain().focus().redo().run()} title="Refazer">
+      <ToolButton onClick={() => editor.chain().focus().redo().run()} title="Refazer" disabled={!canRedo}>
         <Redo className="h-4 w-4" />
       </ToolButton>
     </div>

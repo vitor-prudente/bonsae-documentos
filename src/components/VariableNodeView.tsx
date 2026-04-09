@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { NodeViewWrapper } from "@tiptap/react";
+import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
 import { variableIconMap } from "./variableIcons";
 import {
   User, CreditCard, MapPin, DollarSign, Calendar,
@@ -20,7 +20,7 @@ const iconComponents: Record<string, LucideIcon> = {
   gavel: Gavel,
 };
 
-export function VariableNodeView({ node, editor, getPos }: any) {
+export function VariableNodeView({ node, editor, getPos }: NodeViewProps) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);

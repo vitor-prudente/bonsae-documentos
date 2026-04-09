@@ -1,5 +1,6 @@
 import { User, CreditCard, MapPin, DollarSign, Calendar, FileText, Briefcase, BadgeCheck, Building, Gavel, type LucideIcon } from "lucide-react";
 import { variableIconMap } from "./variableIcons";
+import { useEffect, useState } from "react";
 
 const iconComponents: Record<string, LucideIcon> = {
   user: User,
@@ -14,7 +15,13 @@ const iconComponents: Record<string, LucideIcon> = {
   gavel: Gavel,
 };
 
-const variables = [
+interface SidebarVariable {
+  id?: string;
+  key: string;
+  label: string;
+}
+
+const defaultVariables: SidebarVariable[] = [
   { key: "nome_cliente", label: "Nome do Cliente" },
   { key: "cpf_cnpj", label: "CPF/CNPJ" },
   { key: "endereco", label: "Endereço" },
@@ -28,11 +35,34 @@ const variables = [
 ];
 
 export function VariablesSidebar() {
-  const handleDragStart = (e: React.DragEvent, variable: typeof variables[number]) => {
+  const [variables, setVariables] = useState<SidebarVariable[]>(defaultVariables);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("bonsae-variable-list");
+      if (!raw) return;
+      const custom = JSON.parse(raw) as SidebarVariable[];
+      if (Array.isArray(custom) && custom.length > 0) {
+        setVariables(custom);
+      }
+    } catch {
+      // ignore malformed localStorage and keep defaults
+    }
+  }, []);
+
+  const handleDragStart = (e: React.DragEvent, variable: SidebarVariable) => {
     e.dataTransfer.setData("text/plain", `{{${variable.key}}}`);
     e.dataTransfer.setData("application/x-variable", variable.key);
     e.dataTransfer.setData("application/x-variable-label", variable.label);
     e.dataTransfer.effectAllowed = "copy";
+  };
+
+  const handleInsertClick = (variable: SidebarVariable) => {
+    window.dispatchEvent(
+      new CustomEvent("insert-variable", {
+        detail: { key: variable.key, label: variable.label },
+      })
+    );
   };
 
   return (
@@ -42,7 +72,7 @@ export function VariablesSidebar() {
           Variáveis Disponíveis
         </h2>
         <p className="text-xs text-muted-foreground mt-1">
-          Arraste para o editor
+          Arraste ou clique para inserir no editor
         </p>
       </div>
       <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
@@ -50,17 +80,19 @@ export function VariablesSidebar() {
           const iconName = variableIconMap[v.key] || "user";
           const IconComponent = iconComponents[iconName] || User;
           return (
-            <div
+            <button
               key={v.key}
               draggable
               onDragStart={(e) => handleDragStart(e, v)}
-              className="flex items-center gap-2 px-3 py-2.5 rounded-md bg-accent/60 hover:bg-accent cursor-grab active:cursor-grabbing transition-colors group border border-transparent hover:border-border"
+              onClick={() => handleInsertClick(v)}
+              className="w-full flex items-center gap-2 px-3 py-2.5 rounded-md bg-accent/60 hover:bg-accent cursor-grab active:cursor-grabbing transition-colors border border-transparent hover:border-border text-left"
+              title={`Inserir variável ${v.label}`}
             >
               <IconComponent className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
               <div className="flex-1 min-w-0">
                 <span className="text-sm font-medium text-foreground">{v.label}</span>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>

@@ -1,10 +1,20 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Plus, FileText, Trash2, Search, Pin, PinOff, Variable, LayoutTemplate } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Plus, FileText, Trash2, Search, Pin, PinOff, Variable, LayoutTemplate, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import bonsaiImg from "@/assets/bonsai-empty.png";
 import { getPinnedTemplates, togglePinTemplate, type PinnedTemplate } from "@/components/AppSidebar";
+import { getDocumentPreviewText } from "@/lib/documentPreview";
 
 const STORAGE_LIST_KEY = "legal-doc-list";
 const TEMPLATE_LIST_KEY = "bonsae-template-list";
@@ -118,10 +128,13 @@ const formatDate = (dateStr: string) => {
 function DocumentsTab() {
   const navigate = useNavigate();
   const [documents, setDocuments] = useState<SavedDocument[]>([]);
+  const [templates, setTemplates] = useState<SavedTemplate[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
 
   useEffect(() => {
     setDocuments(getDocumentList());
+    setTemplates(getTemplateList());
   }, []);
 
   const filteredDocs = documents.filter((doc) =>
@@ -135,8 +148,6 @@ function DocumentsTab() {
     setDocuments(updated);
     toast.success("Documento excluído.");
   };
-
-  const templates = getTemplateList();
 
   const handleNewFromTemplate = (t: SavedTemplate) => {
     const newDoc: SavedDocument = {
@@ -153,19 +164,17 @@ function DocumentsTab() {
     toast.success("Documento criado a partir do template.");
   };
 
-  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
-
   return (
     <>
       <div className="flex items-center gap-3 mb-6">
         <div className="flex-1 max-w-md relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
+          <Input
             type="text"
             placeholder="Buscar documentos..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-sm bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
+            className="pl-9"
           />
         </div>
         <Button onClick={() => setShowTemplatePicker(true)} size="sm" className="gap-2">
@@ -174,12 +183,12 @@ function DocumentsTab() {
         </Button>
       </div>
 
-      {/* Template picker modal */}
-      {showTemplatePicker && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={() => setShowTemplatePicker(false)}>
-          <div className="bg-card border border-border rounded-xl shadow-xl max-w-lg w-full mx-4 p-6" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-foreground mb-1">Escolha um Template</h3>
-            <p className="text-sm text-muted-foreground mb-4">Selecione o template base para criar seu documento.</p>
+      <Dialog open={showTemplatePicker} onOpenChange={setShowTemplatePicker}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Escolha um template</DialogTitle>
+            <DialogDescription>Selecione o template base para criar seu documento.</DialogDescription>
+          </DialogHeader>
             {templates.length === 0 ? (
               <div className="text-center py-8">
                 <LayoutTemplate className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
@@ -206,15 +215,22 @@ function DocumentsTab() {
                 ))}
               </div>
             )}
-          </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
       {filteredDocs.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
           <img src={bonsaiImg} alt="Bonsai" className="h-60 mb-6 mix-blend-multiply" />
           <p className="text-lg font-medium">Nenhum documento encontrado</p>
           <p className="text-sm mt-1">Crie um documento a partir de um template existente.</p>
+          <Button
+            onClick={() => navigate("/?tab=templates")}
+            variant="outline"
+            className="mt-4 gap-2 bg-white text-foreground hover:bg-accent"
+          >
+            <LayoutTemplate className="h-4 w-4" />
+            Ver templates
+          </Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -226,10 +242,11 @@ function DocumentsTab() {
             >
               <div className="aspect-[4/3] bg-white flex items-start overflow-hidden relative">
                 {doc.html ? (
-                  <div
-                    className="w-full h-full origin-top-left pointer-events-none document-preview-mini"
-                    dangerouslySetInnerHTML={{ __html: doc.html }}
-                  />
+                  <div className="w-full h-full pointer-events-none document-preview-mini">
+                    <p className="line-clamp-6 text-sm text-muted-foreground">
+                      {getDocumentPreviewText(doc.html)}
+                    </p>
+                  </div>
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-muted/50">
                     <FileText className="h-12 w-12 text-muted-foreground/20" />
@@ -252,6 +269,132 @@ function DocumentsTab() {
         </div>
       )}
     </>
+  );
+}
+
+function HomeTab() {
+  const navigate = useNavigate();
+  const [documents, setDocuments] = useState<SavedDocument[]>([]);
+  const [templates, setTemplates] = useState<SavedTemplate[]>([]);
+
+  useEffect(() => {
+    setDocuments(getDocumentList());
+    setTemplates(getTemplateList());
+  }, []);
+
+  const recentDocuments = [...documents]
+    .sort((a, b) => +new Date(b.updatedAt) - +new Date(a.updatedAt))
+    .slice(0, 4);
+  const recentTemplates = [...templates]
+    .sort((a, b) => +new Date(b.updatedAt) - +new Date(a.updatedAt))
+    .slice(0, 4);
+
+  return (
+    <div className="space-y-8">
+      <section className="rounded-xl border border-border bg-card p-6">
+        <h2 className="text-lg font-semibold text-foreground">Como usar o Bonsae Documentos</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Siga este fluxo para criar documentos padronizados de forma mais rapida.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5">
+          <div className="rounded-lg border border-border p-4 bg-background/50">
+            <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Passo 1</p>
+            <p className="text-sm font-medium mt-1">Crie um template</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Monte o modelo base no editor com o cabecalho e a estrutura principal.
+            </p>
+          </div>
+          <div className="rounded-lg border border-border p-4 bg-background/50">
+            <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Passo 2</p>
+            <p className="text-sm font-medium mt-1">Use variaveis</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Insira variaveis como {`{{nome_cliente}}`} para reaproveitar o template em novos casos.
+            </p>
+          </div>
+          <div className="rounded-lg border border-border p-4 bg-background/50">
+            <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Passo 3</p>
+            <p className="text-sm font-medium mt-1">Gere documentos</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Crie documentos a partir dos templates, preencha os dados e exporte em PDF.
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-3 mt-5">
+          <Button onClick={() => navigate("/?tab=templates")} className="gap-2">
+            <LayoutTemplate className="h-4 w-4" />
+            Ir para Templates
+          </Button>
+          <Button onClick={() => navigate("/?tab=documents")} variant="outline" className="gap-2">
+            <FileText className="h-4 w-4" />
+            Ver Documentos
+          </Button>
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-semibold text-foreground">Arquivos salvos</h3>
+          <Button variant="ghost" size="sm" className="gap-2" onClick={() => navigate("/?tab=templates")}>
+            Gerenciar
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {recentTemplates.length === 0 && recentDocuments.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border p-8 text-center">
+            <p className="text-sm text-muted-foreground">Voce ainda nao tem templates ou documentos salvos.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="rounded-xl border border-border bg-card p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <LayoutTemplate className="h-4 w-4 text-primary" />
+                <h4 className="text-sm font-semibold text-foreground">Templates recentes</h4>
+              </div>
+              {recentTemplates.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Nenhum template criado ainda.</p>
+              ) : (
+                <div className="space-y-2">
+                  {recentTemplates.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => navigate(`/editor?id=${t.id}&type=template`)}
+                      className="w-full text-left px-3 py-2 rounded-lg border border-border hover:border-primary/30 hover:bg-accent/40 transition-colors"
+                    >
+                      <p className="text-sm font-medium text-foreground truncate">{t.title}</p>
+                      <p className="text-xs text-muted-foreground">{formatDate(t.updatedAt)}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-xl border border-border bg-card p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <FileText className="h-4 w-4 text-primary" />
+                <h4 className="text-sm font-semibold text-foreground">Documentos recentes</h4>
+              </div>
+              {recentDocuments.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Nenhum documento criado ainda.</p>
+              ) : (
+                <div className="space-y-2">
+                  {recentDocuments.map((doc) => (
+                    <button
+                      key={doc.id}
+                      onClick={() => navigate(`/editor?id=${doc.id}`)}
+                      className="w-full text-left px-3 py-2 rounded-lg border border-border hover:border-primary/30 hover:bg-accent/40 transition-colors"
+                    >
+                      <p className="text-sm font-medium text-foreground truncate">{doc.title}</p>
+                      <p className="text-xs text-muted-foreground">{formatDate(doc.updatedAt)}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </section>
+    </div>
   );
 }
 
@@ -301,15 +444,15 @@ function TemplatesTab() {
       <div className="flex items-center gap-3 mb-6">
         <div className="flex-1 max-w-md relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
+          <Input
             type="text"
             placeholder="Buscar templates..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-sm bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
+            className="pl-9"
           />
         </div>
-        <Button onClick={handleCreateTemplate} variant="outline" size="sm" className="gap-2">
+        <Button onClick={handleCreateTemplate} size="sm" className="gap-2">
           <Plus className="h-4 w-4" />
           Novo Template
         </Button>
@@ -331,10 +474,11 @@ function TemplatesTab() {
             >
               <div className="aspect-[4/3] bg-white flex items-start overflow-hidden relative">
                 {t.html ? (
-                  <div
-                    className="w-full h-full origin-top-left pointer-events-none document-preview-mini"
-                    dangerouslySetInnerHTML={{ __html: t.html }}
-                  />
+                  <div className="w-full h-full pointer-events-none document-preview-mini">
+                    <p className="line-clamp-6 text-sm text-muted-foreground">
+                      {getDocumentPreviewText(t.html)}
+                    </p>
+                  </div>
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-muted/50">
                     <LayoutTemplate className="h-12 w-12 text-muted-foreground/20" />
@@ -424,7 +568,10 @@ function VariablesTab() {
       <div className="bg-card border border-border rounded-xl p-5 mb-6">
         <h3 className="text-sm font-semibold text-foreground mb-3">Nova Variável</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-          <input
+          <div className="space-y-1.5">
+            <Label htmlFor="new-variable-label">Nome da variável</Label>
+            <Input
+              id="new-variable-label"
             type="text"
             placeholder="Nome (ex: Nome do Réu)"
             value={newLabel}
@@ -432,15 +579,19 @@ function VariablesTab() {
               setNewLabel(e.target.value);
               setNewKey(e.target.value.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, ""));
             }}
-            className="px-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
-          />
-          <input
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="new-variable-key">Chave técnica</Label>
+            <Input
+              id="new-variable-key"
             type="text"
             placeholder="Chave (ex: nome_reu)"
             value={newKey}
             onChange={(e) => setNewKey(e.target.value)}
-            className="px-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground font-mono"
-          />
+            className="font-mono"
+            />
+          </div>
         </div>
         <Button onClick={handleAdd} size="sm" className="gap-2">
           <Plus className="h-4 w-4" />
@@ -480,15 +631,17 @@ function VariablesTab() {
 
 const Documents = () => {
   const [searchParams] = useSearchParams();
-  const tab = searchParams.get("tab") || "templates";
+  const tab = searchParams.get("tab") || "home";
 
   const titles: Record<string, string> = {
+    home: "Home",
     documents: "Documentos",
     templates: "Templates",
     variables: "Variáveis",
   };
 
   const descriptions: Record<string, string> = {
+    home: "Comece por aqui para entender o fluxo e acessar seus arquivos recentes.",
     documents: "Documentos preenchidos com dados reais.",
     templates: "Modelos base reutilizáveis para criar documentos.",
     variables: "Gerencie as variáveis disponíveis nos templates.",
@@ -504,6 +657,7 @@ const Documents = () => {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-8 pb-8">
+        {tab === "home" && <HomeTab />}
         {tab === "documents" && <DocumentsTab />}
         {tab === "templates" && <TemplatesTab />}
         {tab === "variables" && <VariablesTab />}

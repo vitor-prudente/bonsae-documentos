@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   Plus,
   FileText,
   LayoutTemplate,
   Braces,
+  Home,
   Pin,
   ChevronRight,
+  PanelLeftClose,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logoImg from "@/assets/logo-bonsae.png";
@@ -45,34 +47,41 @@ interface NavItemProps {
   icon: React.ReactNode;
   label: string;
   active?: boolean;
-  onClick: () => void;
+  to: string;
   badge?: number;
+  collapsed?: boolean;
 }
 
-function NavItem({ icon, label, active, onClick, badge }: NavItemProps) {
+function NavItem({ icon, label, active, to, badge, collapsed }: NavItemProps) {
   return (
-    <button
-      onClick={onClick}
+    <Link
+      to={to}
+      title={collapsed ? label : undefined}
       className={cn(
         "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+        collapsed && "justify-center px-2",
         active
           ? "bg-accent text-foreground"
           : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
       )}
     >
       {icon}
-      <span className="flex-1 text-left">{label}</span>
-      {badge !== undefined && (
+      {!collapsed && <span className="flex-1 text-left">{label}</span>}
+      {!collapsed && badge !== undefined && (
         <span className="text-xs bg-muted px-1.5 py-0.5 rounded-md text-muted-foreground">
           {badge}
         </span>
       )}
-    </button>
+    </Link>
   );
 }
 
-export function AppSidebar() {
-  const navigate = useNavigate();
+interface AppSidebarProps {
+  isOpen: boolean;
+  onToggle: () => void;
+}
+
+export function AppSidebar({ isOpen, onToggle }: AppSidebarProps) {
   const location = useLocation();
   const [pinned, setPinned] = useState<PinnedTemplate[]>([]);
 
@@ -88,35 +97,49 @@ export function AppSidebar() {
     };
   }, []);
 
+  const isHome =
+    location.pathname === "/" &&
+    (!location.search || (!location.search.includes("tab=documents") &&
+      !location.search.includes("tab=templates") &&
+      !location.search.includes("tab=variables")));
   const isDocuments = location.search.includes("tab=documents");
   const isTemplates =
-    (location.pathname === "/" &&
-      !location.search.includes("tab=documents") &&
-      !location.search.includes("tab=variables")) ||
     location.search.includes("tab=templates");
   const isVariables = location.search.includes("tab=variables");
+  const isExplicitHome = location.search.includes("tab=home");
+
+  if (!isOpen) {
+    return null;
+  }
 
   return (
-    <aside className="w-[260px] h-screen flex flex-col bg-card border-r border-border shrink-0">
+    <aside className="w-[260px] h-screen flex flex-col bg-card border-r border-border shrink-0 transition-all duration-200">
       {/* Logo */}
       <div className="px-4 py-5 flex items-center gap-2">
-        <img
-          src={logoImg}
-          alt="Bonsae"
-          className="h-7 cursor-pointer"
-          onClick={() => navigate("/")}
-        />
+        <Link to="/">
+          <img
+            src={logoImg}
+            alt="Bonsae"
+            className="h-7 cursor-pointer object-contain"
+          />
+        </Link>
+        <button
+          onClick={onToggle}
+          className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors ml-auto"
+          title="Fechar sidebar"
+          aria-label="Fechar sidebar"
+        >
+          <PanelLeftClose className="h-4 w-4" />
+        </button>
       </div>
 
       {/* Create button */}
       <div className="px-3 mb-2">
-        <Button
-          onClick={() => navigate("/editor?type=template")}
-          className="w-full gap-2 justify-start"
-          size="default"
-        >
-          <Plus className="h-4 w-4" />
-          Criar Template
+        <Button asChild className="w-full gap-2 justify-start" size="default">
+          <Link to="/editor?type=template">
+            <Plus className="h-4 w-4" />
+            Criar Template
+          </Link>
         </Button>
       </div>
 
@@ -126,22 +149,28 @@ export function AppSidebar() {
           Geral
         </p>
         <NavItem
+          icon={<Home className="h-4 w-4" />}
+          label="Home"
+          active={isHome || isExplicitHome}
+          to="/"
+        />
+        <NavItem
           icon={<LayoutTemplate className="h-4 w-4" />}
           label="Templates"
           active={isTemplates}
-          onClick={() => navigate("/")}
+          to="/?tab=templates"
         />
         <NavItem
           icon={<FileText className="h-4 w-4" />}
           label="Documentos"
           active={isDocuments}
-          onClick={() => navigate("/?tab=documents")}
+          to="/?tab=documents"
         />
         <NavItem
           icon={<Braces className="h-4 w-4" />}
           label="Variáveis"
           active={isVariables}
-          onClick={() => navigate("/?tab=variables")}
+          to="/?tab=variables"
         />
       </nav>
 
@@ -158,15 +187,15 @@ export function AppSidebar() {
         ) : (
           <div className="space-y-0.5">
             {pinned.map((t) => (
-              <button
+              <Link
                 key={t.id}
-                onClick={() => navigate(`/editor?id=${t.id}`)}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors"
+                to={`/editor?id=${t.id}`}
+                className="group w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors"
               >
                 <LayoutTemplate className="h-3.5 w-3.5 shrink-0" />
                 <span className="truncate flex-1 text-left">{t.title}</span>
                 <ChevronRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100" />
-              </button>
+              </Link>
             ))}
           </div>
         )}

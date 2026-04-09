@@ -1,27 +1,40 @@
 import { Button } from "@/components/ui/button";
-import { FileDown, Save, Upload, Trash2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { FileDown, Pin, PinOff, Save, Upload, Trash2, Eraser } from "lucide-react";
 import { useRef } from "react";
 
 interface SettingsSidebarProps {
   onExportPdf: () => void;
   onSave: () => void;
   onClear: () => void;
+  onToggleTemplatePin: () => void;
+  onDeleteTemplate: () => void;
   letterheadUrl: string | null;
   onLetterheadUpload: (url: string) => void;
   onLetterheadRemove: () => void;
   documentTitle: string;
   onDocumentTitleChange: (title: string) => void;
+  isExporting?: boolean;
+  isTemplateMode?: boolean;
+  isTemplatePinned?: boolean;
+  canManageTemplate?: boolean;
 }
 
 export function SettingsSidebar({
   onExportPdf,
   onSave,
   onClear,
+  onToggleTemplatePin,
+  onDeleteTemplate,
   letterheadUrl,
   onLetterheadUpload,
   onLetterheadRemove,
   documentTitle,
   onDocumentTitleChange,
+  isExporting = false,
+  isTemplateMode = false,
+  isTemplatePinned = false,
+  canManageTemplate = false,
 }: SettingsSidebarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -52,11 +65,10 @@ export function SettingsSidebar({
           <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
             Título do Documento
           </label>
-          <input
+          <Input
             type="text"
             value={documentTitle}
             onChange={(e) => onDocumentTitleChange(e.target.value)}
-            className="w-full px-3 py-2 text-sm bg-accent/50 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
             placeholder="Sem título"
           />
         </div>
@@ -110,20 +122,50 @@ export function SettingsSidebar({
           </label>
           <Button onClick={onSave} variant="outline" size="sm" className="w-full justify-start">
             <Save className="h-3.5 w-3.5 mr-2" />
-            Salvar Documento
+            {isTemplateMode ? "Salvar Template" : "Salvar Documento"}
           </Button>
-          <Button onClick={onClear} variant="ghost" size="sm" className="w-full justify-start text-destructive hover:text-destructive">
-            <Trash2 className="h-3.5 w-3.5 mr-2" />
+          {isTemplateMode && (
+            <>
+              <Button
+                onClick={onToggleTemplatePin}
+                variant="outline"
+                size="sm"
+                disabled={!canManageTemplate}
+                className="w-full justify-start"
+              >
+                {isTemplatePinned ? (
+                  <PinOff className="h-3.5 w-3.5 mr-2" />
+                ) : (
+                  <Pin className="h-3.5 w-3.5 mr-2" />
+                )}
+                {isTemplatePinned ? "Desafixar Template" : "Fixar Template"}
+              </Button>
+            </>
+          )}
+          <Button onClick={onClear} variant="outline" size="sm" className="w-full justify-start">
+            <Eraser className="h-3.5 w-3.5 mr-2" />
             Limpar Tudo
           </Button>
+          {isTemplateMode && (
+            <Button
+              onClick={onDeleteTemplate}
+              variant="outline"
+              size="sm"
+              disabled={!canManageTemplate}
+              className="w-full justify-start border-red-600 text-red-600 hover:bg-red-600/10 hover:text-red-700"
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-2" />
+              Excluir Template
+            </Button>
+          )}
         </div>
       </div>
 
       {/* Export button pinned to bottom */}
       <div className="p-4 border-t border-border">
-        <Button onClick={onExportPdf} className="w-full" size="default">
+        <Button onClick={onExportPdf} className="w-full" size="default" disabled={isExporting}>
           <FileDown className="h-4 w-4 mr-2" />
-          Gerar PDF
+          {isExporting ? "Gerando PDF..." : "Gerar PDF"}
         </Button>
       </div>
     </aside>

@@ -1,53 +1,53 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Source+Serif+4:wght@400;600;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:wght@400;700&display=swap');
-
 @layer base {
   :root {
-    --background: 40 20% 97%;
-    --foreground: 220 25% 15%;
+    --background: 38 24% 97%;
+    --foreground: 216 24% 16%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 25% 15%;
+    --card-foreground: 216 24% 16%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 25% 15%;
+    --popover-foreground: 216 24% 16%;
 
-    --primary: 213 100% 45%;
+    --primary: 222 65% 42%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 40 15% 93%;
-    --secondary-foreground: 220 25% 15%;
+    --secondary: 38 18% 93%;
+    --secondary-foreground: 216 24% 16%;
 
-    --muted: 40 10% 92%;
-    --muted-foreground: 220 10% 50%;
+    --muted: 40 14% 92%;
+    --muted-foreground: 218 12% 42%;
 
-    --accent: 40 30% 94%;
-    --accent-foreground: 220 25% 15%;
+    --accent: 38 32% 94%;
+    --accent-foreground: 216 24% 16%;
 
     --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 10% 88%;
-    --input: 220 10% 88%;
-    --ring: 213 100% 45%;
+    --border: 220 14% 87%;
+    --input: 220 14% 87%;
+    --ring: 222 65% 42%;
 
-    --radius: 0.5rem;
+    --radius: 0.65rem;
 
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 220 15% 30%;
-    --sidebar-primary: 213 100% 45%;
+    --sidebar-foreground: 217 16% 28%;
+    --sidebar-primary: 222 65% 42%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 40 20% 95%;
-    --sidebar-accent-foreground: 220 25% 15%;
-    --sidebar-border: 220 10% 90%;
-    --sidebar-ring: 213 100% 45%;
+    --sidebar-accent: 40 22% 95%;
+    --sidebar-accent-foreground: 216 24% 16%;
+    --sidebar-border: 220 14% 90%;
+    --sidebar-ring: 222 65% 42%;
 
-    --variable-badge: 213 100% 45%;
+    --variable-badge: 222 65% 42%;
     --variable-badge-foreground: 0 0% 100%;
-    --editor-bg: 40 25% 96%;
+    --editor-bg: 40 24% 96%;
     --toolbar-bg: 0 0% 100%;
   }
 }
@@ -59,18 +59,21 @@
 
   body {
     @apply bg-background text-foreground font-sans;
-    font-family: 'Inter', sans-serif;
+    font-family: "Manrope", sans-serif;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
   }
 }
 
 /* Tiptap editor styles */
 .tiptap {
   outline: none;
-  min-height: 600px;
-  font-family: 'Merriweather', serif;
+  min-height: clamp(420px, 65vh, 720px);
+  font-family: "Source Serif 4", serif;
   font-size: 14px;
-  line-height: 1.8;
-  color: hsl(220 25% 15%);
+  line-height: 1.82;
+  letter-spacing: 0.002em;
+  color: hsl(var(--foreground));
 }
 
 .tiptap p {
@@ -100,7 +103,7 @@
   color: hsl(var(--variable-badge-foreground));
   padding: 1px 8px;
   border-radius: 4px;
-  font-family: 'Inter', sans-serif;
+  font-family: "Manrope", sans-serif;
   font-size: 12px;
   font-weight: 500;
   vertical-align: baseline;
@@ -145,7 +148,7 @@
   border: none;
   outline: none;
   color: hsl(var(--variable-badge-foreground));
-  font-family: 'Inter', sans-serif;
+  font-family: "Manrope", sans-serif;
   font-size: 12px;
   font-weight: 500;
   width: 120px;
@@ -159,20 +162,17 @@
 .tiptap p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   float: left;
-  color: hsl(220 10% 65%);
+  color: hsl(var(--muted-foreground) / 0.85);
   pointer-events: none;
   height: 0;
   font-style: italic;
 }
 
 .document-preview-mini {
-  transform: scale(0.35);
-  transform-origin: top left;
-  width: 285%;
-  padding: 16px 24px;
-  font-size: 14px;
-  line-height: 1.5;
-  color: #1a1a1a;
+  padding: 16px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: hsl(var(--foreground));
   overflow: hidden;
 }
 
