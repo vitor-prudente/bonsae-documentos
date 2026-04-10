@@ -7,6 +7,7 @@ import { Settings, ArrowLeft, Braces, PanelRight } from "lucide-react";
 import { toast } from "sonner";
 import { getPinnedTemplates, togglePinTemplate } from "@/components/AppSidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 import {
   getDocumentList,
   saveDocumentList,
