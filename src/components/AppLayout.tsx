@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { Braces, FileText, Home, LayoutTemplate, PanelLeftOpen, X } from "lucide-react";
+import logoImg from "@/assets/logo-bonsae.png";
 import { AppSidebar } from "./AppSidebar";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -75,7 +76,7 @@ export function AppLayout() {
             >
               <PanelLeftOpen className="h-5 w-5" />
             </button>
-            <span className="text-sm font-medium text-foreground truncate">Bonsae</span>
+            <Link to="/"><img src={logoImg} alt="Bonsae" className="h-6 object-contain" /></Link>
           </header>
         )}
         <div className="flex-1 overflow-hidden">
