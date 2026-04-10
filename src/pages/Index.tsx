@@ -247,14 +247,17 @@ const Index = () => {
 
       <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
         {!isMobile && <VariablesSidebar />}
-        <DocumentEditor
-          ref={editorRef}
-          letterheadUrl={letterheadUrl}
-          initialContent={initialContent}
-        />
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+          <DocumentEditor
+            ref={editorRef}
+            letterheadUrl={letterheadUrl}
+            initialContent={initialContent}
+          />
+        </div>
         {showSettings && (
           <div className={cn(
-            isMobile ? "border-t border-border max-h-[50vh] overflow-y-auto" : ""
+            "shrink-0",
+            isMobile ? "border-t border-border max-h-[45vh] overflow-y-auto" : ""
           )}>
             <SettingsSidebar
               onExportPdf={handleExportPdf}
