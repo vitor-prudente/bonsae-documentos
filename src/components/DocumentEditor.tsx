@@ -58,7 +58,7 @@ export const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>
       const incomingContent = initialContent || "";
       const currentContent = editor.getHTML();
       if (incomingContent !== currentContent) {
-        editor.commands.setContent(incomingContent, false, { preserveWhitespace: "full" });
+        editor.commands.setContent(incomingContent);
       }
     }, [editor, initialContent]);
 
