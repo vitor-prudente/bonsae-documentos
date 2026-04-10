@@ -244,7 +244,7 @@ const Index = () => {
         </div>
       )}
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
         {!isMobile && <VariablesSidebar />}
         <DocumentEditor
           ref={editorRef}
@@ -252,24 +252,28 @@ const Index = () => {
           initialContent={initialContent}
         />
         {showSettings && (
-          <SettingsSidebar
-            onExportPdf={handleExportPdf}
-            onSave={handleSave}
-            onClear={handleClear}
-            onToggleTemplatePin={handleToggleTemplatePin}
-            onDeleteTemplate={handleDeleteTemplate}
-            onDeleteDocument={handleDeleteDocument}
-            letterheadUrl={letterheadUrl}
-            onLetterheadUpload={setLetterheadUrl}
-            onLetterheadRemove={() => setLetterheadUrl(null)}
-            documentTitle={documentTitle}
-            onDocumentTitleChange={setDocumentTitle}
-            isExporting={isExporting}
-            isTemplateMode={savingAsTemplate}
-            isTemplatePinned={isTemplatePinned}
-            canManageTemplate={Boolean(currentDocId)}
-            canDeleteDocument={Boolean(currentDocId) && !savingAsTemplate}
-          />
+          <div className={cn(
+            isMobile ? "border-t border-border max-h-[50vh] overflow-y-auto" : ""
+          )}>
+            <SettingsSidebar
+              onExportPdf={handleExportPdf}
+              onSave={handleSave}
+              onClear={handleClear}
+              onToggleTemplatePin={handleToggleTemplatePin}
+              onDeleteTemplate={handleDeleteTemplate}
+              onDeleteDocument={handleDeleteDocument}
+              letterheadUrl={letterheadUrl}
+              onLetterheadUpload={setLetterheadUrl}
+              onLetterheadRemove={() => setLetterheadUrl(null)}
+              documentTitle={documentTitle}
+              onDocumentTitleChange={setDocumentTitle}
+              isExporting={isExporting}
+              isTemplateMode={savingAsTemplate}
+              isTemplatePinned={isTemplatePinned}
+              canManageTemplate={Boolean(currentDocId)}
+              canDeleteDocument={Boolean(currentDocId) && !savingAsTemplate}
+            />
+          </div>
         )}
       </div>
     </div>
