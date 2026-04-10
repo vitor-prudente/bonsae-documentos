@@ -294,21 +294,21 @@ function HomeTab() {
       <section className="rounded-xl border border-border bg-card p-6">
         <h2 className="text-lg font-semibold text-foreground">Como usar o Bonsae Documentos</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Siga este fluxo para criar documentos padronizados de forma mais rapida.
+          Siga este fluxo para criar documentos padronizados de forma mais rápida.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5">
           <div className="rounded-lg border border-border p-4 bg-background/50">
             <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Passo 1</p>
             <p className="text-sm font-medium mt-1">Crie um template</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Monte o modelo base no editor com o cabecalho e a estrutura principal.
+              Monte o modelo base no editor com o cabeçalho e a estrutura principal.
             </p>
           </div>
           <div className="rounded-lg border border-border p-4 bg-background/50">
             <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Passo 2</p>
-            <p className="text-sm font-medium mt-1">Use variaveis</p>
+            <p className="text-sm font-medium mt-1">Use variáveis</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Insira variaveis como {`{{nome_cliente}}`} para reaproveitar o template em novos casos.
+              Insira variáveis como {`{{nome_cliente}}`} para reaproveitar o template em novos casos.
             </p>
           </div>
           <div className="rounded-lg border border-border p-4 bg-background/50">
@@ -342,7 +342,7 @@ function HomeTab() {
 
         {recentTemplates.length === 0 && recentDocuments.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border p-8 text-center">
-            <p className="text-sm text-muted-foreground">Voce ainda nao tem templates ou documentos salvos.</p>
+            <p className="text-sm text-muted-foreground">Você ainda não tem templates ou documentos salvos.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

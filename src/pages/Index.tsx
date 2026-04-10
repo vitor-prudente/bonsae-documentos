@@ -157,6 +157,20 @@ const Index = () => {
     toast.success(nowPinned ? "Template fixado." : "Template desafixado.");
   }, [savingAsTemplate, currentDocId, documentTitle]);
 
+  const handleDeleteDocument = useCallback(() => {
+    if (savingAsTemplate || !currentDocId) return;
+
+    const shouldDelete = window.confirm("Tem certeza que deseja excluir este documento?");
+    if (!shouldDelete) return;
+
+    const docs = getDocumentList();
+    const updatedDocs = docs.filter((doc) => doc.id !== currentDocId);
+    saveDocumentList(updatedDocs);
+
+    toast.success("Documento excluído.");
+    navigate("/?tab=documents");
+  }, [savingAsTemplate, currentDocId, navigate]);
+
   const handleDeleteTemplate = useCallback(() => {
     if (!savingAsTemplate || !currentDocId) return;
 
@@ -223,6 +237,7 @@ const Index = () => {
             onClear={handleClear}
             onToggleTemplatePin={handleToggleTemplatePin}
             onDeleteTemplate={handleDeleteTemplate}
+            onDeleteDocument={handleDeleteDocument}
             letterheadUrl={letterheadUrl}
             onLetterheadUpload={setLetterheadUrl}
             onLetterheadRemove={() => setLetterheadUrl(null)}
@@ -232,6 +247,7 @@ const Index = () => {
             isTemplateMode={savingAsTemplate}
             isTemplatePinned={isTemplatePinned}
             canManageTemplate={Boolean(currentDocId)}
+            canDeleteDocument={Boolean(currentDocId) && !savingAsTemplate}
           />
         )}
       </div>

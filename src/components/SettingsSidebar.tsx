@@ -9,6 +9,7 @@ interface SettingsSidebarProps {
   onClear: () => void;
   onToggleTemplatePin: () => void;
   onDeleteTemplate: () => void;
+  onDeleteDocument: () => void;
   letterheadUrl: string | null;
   onLetterheadUpload: (url: string) => void;
   onLetterheadRemove: () => void;
@@ -18,6 +19,7 @@ interface SettingsSidebarProps {
   isTemplateMode?: boolean;
   isTemplatePinned?: boolean;
   canManageTemplate?: boolean;
+  canDeleteDocument?: boolean;
 }
 
 export function SettingsSidebar({
@@ -26,6 +28,7 @@ export function SettingsSidebar({
   onClear,
   onToggleTemplatePin,
   onDeleteTemplate,
+  onDeleteDocument,
   letterheadUrl,
   onLetterheadUpload,
   onLetterheadRemove,
@@ -35,6 +38,7 @@ export function SettingsSidebar({
   isTemplateMode = false,
   isTemplatePinned = false,
   canManageTemplate = false,
+  canDeleteDocument = false,
 }: SettingsSidebarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -146,6 +150,18 @@ export function SettingsSidebar({
             <Eraser className="h-3.5 w-3.5 mr-2" />
             Limpar Tudo
           </Button>
+          {!isTemplateMode && (
+            <Button
+              onClick={onDeleteDocument}
+              variant="outline"
+              size="sm"
+              disabled={!canDeleteDocument}
+              className="w-full justify-start border-red-600 text-red-600 hover:bg-red-600/10 hover:text-red-700"
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-2" />
+              Excluir Documento
+            </Button>
+          )}
           {isTemplateMode && (
             <Button
               onClick={onDeleteTemplate}
