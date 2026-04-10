@@ -66,7 +66,7 @@ export function VariablesSidebar() {
   };
 
   return (
-    <aside className="w-64 border-r border-border bg-card flex flex-col shrink-0">
+    <aside className="hidden md:flex w-64 border-r border-border bg-card flex-col shrink-0">
       <div className="p-4 border-b border-border">
         <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">
           Variáveis Disponíveis

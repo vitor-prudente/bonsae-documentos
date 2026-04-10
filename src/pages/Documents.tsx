@@ -650,13 +650,13 @@ const Documents = () => {
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Page header */}
-      <div className="px-8 pt-8 pb-4">
-        <h1 className="text-2xl font-bold text-foreground">{titles[tab]}</h1>
-        <p className="text-sm text-muted-foreground mt-1">{descriptions[tab]}</p>
+      <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-4">
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">{titles[tab]}</h1>
+        <p className="text-xs sm:text-sm text-muted-foreground mt-1">{descriptions[tab]}</p>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-8 pb-8">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-8 pb-8">
         {tab === "home" && <HomeTab />}
         {tab === "documents" && <DocumentsTab />}
         {tab === "templates" && <TemplatesTab />}

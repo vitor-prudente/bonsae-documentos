@@ -156,7 +156,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
   const canOrderedList = editor.can().chain().focus().toggleOrderedList().run();
 
   return (
-    <div className="flex items-center gap-0.5 px-3 py-2 bg-toolbar-bg border-b border-border flex-wrap">
+    <div className="flex items-center gap-0.5 px-2 sm:px-3 py-2 bg-toolbar-bg border-b border-border flex-wrap overflow-x-auto">
       {/* Font family picker */}
       <div className="relative" ref={fontPickerRef}>
         <button
