@@ -56,7 +56,7 @@ export function SettingsSidebar({
   };
 
   return (
-    <aside className="w-64 border-l border-border bg-card flex flex-col shrink-0">
+    <aside className="w-full md:w-64 border-l border-border bg-card flex flex-col shrink-0">
       <div className="p-4 border-b border-border">
         <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">
           Configurações

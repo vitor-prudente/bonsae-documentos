@@ -3,9 +3,11 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { VariablesSidebar } from "@/components/VariablesSidebar";
 import { SettingsSidebar } from "@/components/SettingsSidebar";
 import { DocumentEditor, DocumentEditorRef } from "@/components/DocumentEditor";
-import { Settings, ArrowLeft } from "lucide-react";
+import { Settings, ArrowLeft, Braces, PanelRight } from "lucide-react";
 import { toast } from "sonner";
 import { getPinnedTemplates, togglePinTemplate } from "@/components/AppSidebar";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 import {
   getDocumentList,
   saveDocumentList,
@@ -25,7 +27,9 @@ const Index = () => {
   const [documentTitle, setDocumentTitle] = useState(
     isTemplate ? "Novo Template" : "Novo Documento"
   );
-  const [showSettings, setShowSettings] = useState(true);
+  const isMobile = useIsMobile();
+  const [showSettings, setShowSettings] = useState(!isMobile);
+  const [showMobileVars, setShowMobileVars] = useState(false);
   const editorRef = useRef<DocumentEditorRef>(null);
   const [initialContent, setInitialContent] = useState("");
   const [currentDocId, setCurrentDocId] = useState<string | null>(null);
@@ -213,42 +217,64 @@ const Index = () => {
             {documentTitle}
           </span>
         </div>
-        <button
-          onClick={() => setShowSettings(!showSettings)}
-          className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-          title="Configurações"
-        >
-          <Settings className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-1">
+          {isMobile && (
+            <button
+              onClick={() => setShowMobileVars(!showMobileVars)}
+              className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+              title="Variáveis"
+            >
+              <Braces className="h-4 w-4" />
+            </button>
+          )}
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+            title="Configurações"
+          >
+            {showSettings ? <PanelRight className="h-4 w-4" /> : <Settings className="h-4 w-4" />}
+          </button>
+        </div>
       </header>
 
       {/* Main area */}
-      <div className="flex flex-1 overflow-hidden">
-        <VariablesSidebar />
+      {/* Mobile variables drawer */}
+      {isMobile && showMobileVars && (
+        <div className="border-b border-border bg-card max-h-48 overflow-y-auto">
+          <VariablesSidebar />
+        </div>
+      )}
+
+      <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+        {!isMobile && <VariablesSidebar />}
         <DocumentEditor
           ref={editorRef}
           letterheadUrl={letterheadUrl}
           initialContent={initialContent}
         />
         {showSettings && (
-          <SettingsSidebar
-            onExportPdf={handleExportPdf}
-            onSave={handleSave}
-            onClear={handleClear}
-            onToggleTemplatePin={handleToggleTemplatePin}
-            onDeleteTemplate={handleDeleteTemplate}
-            onDeleteDocument={handleDeleteDocument}
-            letterheadUrl={letterheadUrl}
-            onLetterheadUpload={setLetterheadUrl}
-            onLetterheadRemove={() => setLetterheadUrl(null)}
-            documentTitle={documentTitle}
-            onDocumentTitleChange={setDocumentTitle}
-            isExporting={isExporting}
-            isTemplateMode={savingAsTemplate}
-            isTemplatePinned={isTemplatePinned}
-            canManageTemplate={Boolean(currentDocId)}
-            canDeleteDocument={Boolean(currentDocId) && !savingAsTemplate}
-          />
+          <div className={cn(
+            isMobile ? "border-t border-border max-h-[50vh] overflow-y-auto" : ""
+          )}>
+            <SettingsSidebar
+              onExportPdf={handleExportPdf}
+              onSave={handleSave}
+              onClear={handleClear}
+              onToggleTemplatePin={handleToggleTemplatePin}
+              onDeleteTemplate={handleDeleteTemplate}
+              onDeleteDocument={handleDeleteDocument}
+              letterheadUrl={letterheadUrl}
+              onLetterheadUpload={setLetterheadUrl}
+              onLetterheadRemove={() => setLetterheadUrl(null)}
+              documentTitle={documentTitle}
+              onDocumentTitleChange={setDocumentTitle}
+              isExporting={isExporting}
+              isTemplateMode={savingAsTemplate}
+              isTemplatePinned={isTemplatePinned}
+              canManageTemplate={Boolean(currentDocId)}
+              canDeleteDocument={Boolean(currentDocId) && !savingAsTemplate}
+            />
+          </div>
         )}
       </div>
     </div>

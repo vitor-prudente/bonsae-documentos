@@ -58,7 +58,7 @@ export const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>
       const incomingContent = initialContent || "";
       const currentContent = editor.getHTML();
       if (incomingContent !== currentContent) {
-        editor.commands.setContent(incomingContent, false);
+        editor.commands.setContent(incomingContent);
       }
     }, [editor, initialContent]);
 
@@ -114,7 +114,7 @@ export const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>
     return (
       <div className="flex-1 flex flex-col min-w-0">
         <EditorToolbar editor={editor} />
-        <div className="flex-1 overflow-y-auto bg-editor-bg p-8">
+        <div className="flex-1 overflow-y-auto bg-editor-bg p-2 sm:p-8">
           <div
             id="editor-print-area"
             className="max-w-[800px] mx-auto bg-card rounded-lg shadow-sm border border-border"
@@ -133,7 +133,7 @@ export const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>
               </div>
             )}
             {/* Editor */}
-            <div className="p-10">
+            <div className="p-4 sm:p-10">
               <EditorContent editor={editor} />
             </div>
           </div>
