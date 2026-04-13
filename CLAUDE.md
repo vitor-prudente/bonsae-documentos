@@ -20,7 +20,7 @@ A client-side document creation and template management system for Brazilian leg
 
 ## Architecture
 
-**Routing:** Two main routes via React Router v6:
+**Routing:** React Router v6 using `createBrowserRouter` (data router — required for `useBlocker`). Two main routes:
 - `/` — `Documents.tsx`: tab-based page (Home, Documents, Templates, Variables)
 - `/editor` — `Index.tsx`: the TipTap editor with sidebars
 
@@ -56,3 +56,7 @@ TypeScript is configured leniently: `noImplicitAny: false`, `strictNullChecks: f
 ## Path Alias
 
 `@/*` maps to `src/*`. Use this for all internal imports.
+
+## Testing
+
+Tests live in `src/test/`. Vitest runs in jsdom environment with globals enabled. Setup file: `src/test/setup.ts`.

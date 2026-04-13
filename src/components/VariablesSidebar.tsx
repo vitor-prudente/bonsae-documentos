@@ -85,7 +85,7 @@ export function VariablesSidebar() {
               draggable
               onDragStart={(e) => handleDragStart(e, v)}
               onClick={() => handleInsertClick(v)}
-              className="w-full flex items-center gap-2 px-3 py-2.5 rounded-md bg-accent/60 hover:bg-accent cursor-grab active:cursor-grabbing transition-colors border border-transparent hover:border-border text-left"
+              className="w-full flex items-center gap-2 px-3 py-2.5 rounded-md bg-accent/60 hover:bg-accent cursor-grab active:cursor-grabbing transition-[background-color,border-color,transform] duration-[var(--duration-base)] border border-transparent hover:border-border hover:translate-x-0.5 active:scale-[0.97] text-left"
               title={`Inserir variável ${v.label}`}
             >
               <IconComponent className="h-3.5 w-3.5 text-muted-foreground shrink-0" />

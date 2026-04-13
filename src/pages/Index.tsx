@@ -1,13 +1,13 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useBlocker } from "react-router-dom";
 import { VariablesSidebar } from "@/components/VariablesSidebar";
 import { SettingsSidebar } from "@/components/SettingsSidebar";
 import { DocumentEditor, DocumentEditorRef } from "@/components/DocumentEditor";
 import { Settings, ArrowLeft, Braces, PanelRight } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { getPinnedTemplates, togglePinTemplate } from "@/components/AppSidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { cn } from "@/lib/utils";
 import {
   getDocumentList,
   saveDocumentList,
@@ -16,6 +16,16 @@ import {
   type SavedDocument,
   type SavedTemplate,
 } from "@/pages/Documents";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -36,6 +46,12 @@ const Index = () => {
   const [savingAsTemplate, setSavingAsTemplate] = useState(isTemplate);
   const [isExporting, setIsExporting] = useState(false);
   const [isTemplatePinned, setIsTemplatePinned] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [showClearDialog, setShowClearDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showDeleteDocumentDialog, setShowDeleteDocumentDialog] = useState(false);
+
+  const blocker = useBlocker(isDirty);
 
   // Load existing document or template
   useEffect(() => {
@@ -48,6 +64,7 @@ const Index = () => {
         setInitialContent(doc.html);
         setCurrentDocId(doc.id);
         setSavingAsTemplate(false);
+        setIsDirty(false);
         return;
       }
       // Check templates
@@ -59,6 +76,7 @@ const Index = () => {
         setInitialContent(tmpl.html);
         setCurrentDocId(tmpl.id);
         setSavingAsTemplate(true);
+        setIsDirty(false);
       }
     }
   }, [docId]);
@@ -71,6 +89,19 @@ const Index = () => {
     const pinned = getPinnedTemplates();
     setIsTemplatePinned(pinned.some((p) => p.id === currentDocId));
   }, [savingAsTemplate, currentDocId]);
+
+  // Warn before closing the browser tab with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) e.preventDefault();
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
+
+  const handleContentChange = useCallback(() => {
+    setIsDirty(true);
+  }, []);
 
   const handleExportPdf = useCallback(async () => {
     if (isExporting) return;
@@ -135,18 +166,35 @@ const Index = () => {
       saveDocumentList(docs);
       toast.success("Documento salvo!");
     }
+
+    setIsDirty(false);
   }, [letterheadUrl, documentTitle, currentDocId, savingAsTemplate]);
 
-  const handleClear = useCallback(() => {
-    const shouldClear = window.confirm("Tem certeza que deseja limpar todo o conteúdo atual?");
-    if (!shouldClear) return;
+  // Ctrl+S / Cmd+S keyboard shortcut
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+        e.preventDefault();
+        handleSave();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [handleSave]);
 
+  const handleClear = useCallback(() => {
+    setShowClearDialog(true);
+  }, []);
+
+  const confirmClear = useCallback(() => {
     setLetterheadUrl(null);
     setDocumentTitle(savingAsTemplate ? "Novo Template" : "Novo Documento");
     setInitialContent("");
     setCurrentDocId(null);
     setIsTemplatePinned(false);
     editorRef.current?.setContent("");
+    setIsDirty(false);
+    setShowClearDialog(false);
     toast.success("Editor limpo.");
   }, [savingAsTemplate]);
 
@@ -163,23 +211,26 @@ const Index = () => {
 
   const handleDeleteDocument = useCallback(() => {
     if (savingAsTemplate || !currentDocId) return;
+    setShowDeleteDocumentDialog(true);
+  }, [savingAsTemplate, currentDocId]);
 
-    const shouldDelete = window.confirm("Tem certeza que deseja excluir este documento?");
-    if (!shouldDelete) return;
-
+  const confirmDeleteDocument = useCallback(() => {
+    if (!currentDocId) return;
     const docs = getDocumentList();
     const updatedDocs = docs.filter((doc) => doc.id !== currentDocId);
     saveDocumentList(updatedDocs);
-
+    setIsDirty(false);
     toast.success("Documento excluído.");
     navigate("/?tab=documents");
-  }, [savingAsTemplate, currentDocId, navigate]);
+  }, [currentDocId, navigate]);
 
   const handleDeleteTemplate = useCallback(() => {
     if (!savingAsTemplate || !currentDocId) return;
+    setShowDeleteDialog(true);
+  }, [savingAsTemplate, currentDocId]);
 
-    const shouldDelete = window.confirm("Tem certeza que deseja excluir este template?");
-    if (!shouldDelete) return;
+  const confirmDeleteTemplate = useCallback(() => {
+    if (!savingAsTemplate || !currentDocId) return;
 
     const templates = getTemplateList();
     const updatedTemplates = templates.filter((template) => template.id !== currentDocId);
@@ -191,9 +242,15 @@ const Index = () => {
       window.dispatchEvent(new Event("pinned-updated"));
     }
 
+    setIsDirty(false);
     toast.success("Template excluído.");
     navigate("/?tab=templates");
   }, [savingAsTemplate, currentDocId, documentTitle, navigate]);
+
+  const handleDocumentTitleChange = useCallback((title: string) => {
+    setDocumentTitle(title);
+    setIsDirty(true);
+  }, []);
 
   return (
     <div className="flex flex-col h-full">
@@ -216,6 +273,12 @@ const Index = () => {
           <span className="text-sm text-muted-foreground truncate max-w-[250px]">
             {documentTitle}
           </span>
+          {isDirty && (
+            <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-muted-foreground/60 animate-fade-in">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-400/80 animate-pulse" />
+              Não salvo
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1">
           {isMobile && (
@@ -252,13 +315,42 @@ const Index = () => {
             ref={editorRef}
             letterheadUrl={letterheadUrl}
             initialContent={initialContent}
+            onContentChange={handleContentChange}
           />
         </div>
-        {showSettings && (
-          <div className={cn(
-            "shrink-0",
-            isMobile ? "border-t border-border max-h-[45vh] overflow-y-auto" : ""
-          )}>
+        {/* Settings sidebar — slides in/out on desktop; shown inline on mobile */}
+        {isMobile ? (
+          showSettings && (
+            <div className="border-t border-border max-h-[45vh] overflow-y-auto shrink-0">
+              <SettingsSidebar
+                onExportPdf={handleExportPdf}
+                onSave={handleSave}
+                onClear={handleClear}
+                onToggleTemplatePin={handleToggleTemplatePin}
+                onDeleteTemplate={handleDeleteTemplate}
+                onDeleteDocument={handleDeleteDocument}
+                letterheadUrl={letterheadUrl}
+                onLetterheadUpload={(url) => { setLetterheadUrl(url); setIsDirty(true); }}
+                onLetterheadRemove={() => { setLetterheadUrl(null); setIsDirty(true); }}
+                documentTitle={documentTitle}
+                onDocumentTitleChange={handleDocumentTitleChange}
+                isExporting={isExporting}
+                isTemplateMode={savingAsTemplate}
+                isTemplatePinned={isTemplatePinned}
+                canManageTemplate={Boolean(currentDocId)}
+                canDeleteDocument={Boolean(currentDocId) && !savingAsTemplate}
+              />
+            </div>
+          )
+        ) : (
+          <div
+            className={cn(
+              "overflow-hidden shrink-0",
+              "transition-[width,opacity] duration-[220ms]",
+              "[transition-timing-function:cubic-bezier(0.25,1,0.5,1)]",
+              showSettings ? "w-64 opacity-100" : "w-0 opacity-0"
+            )}
+          >
             <SettingsSidebar
               onExportPdf={handleExportPdf}
               onSave={handleSave}
@@ -267,10 +359,10 @@ const Index = () => {
               onDeleteTemplate={handleDeleteTemplate}
               onDeleteDocument={handleDeleteDocument}
               letterheadUrl={letterheadUrl}
-              onLetterheadUpload={setLetterheadUrl}
-              onLetterheadRemove={() => setLetterheadUrl(null)}
+              onLetterheadUpload={(url) => { setLetterheadUrl(url); setIsDirty(true); }}
+              onLetterheadRemove={() => { setLetterheadUrl(null); setIsDirty(true); }}
               documentTitle={documentTitle}
-              onDocumentTitleChange={setDocumentTitle}
+              onDocumentTitleChange={handleDocumentTitleChange}
               isExporting={isExporting}
               isTemplateMode={savingAsTemplate}
               isTemplatePinned={isTemplatePinned}
@@ -280,6 +372,87 @@ const Index = () => {
           </div>
         )}
       </div>
+
+      {/* Unsaved changes — navigation blocker */}
+      <AlertDialog
+        open={blocker.state === "blocked"}
+        onOpenChange={(open) => { if (!open) blocker.reset?.(); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Alterações não salvas</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você tem alterações não salvas. Se sair agora, elas serão perdidas permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => blocker.reset?.()}>
+              Continuar editando
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => blocker.proceed?.()}>
+              Sair sem salvar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Clear confirmation */}
+      <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Limpar conteúdo</AlertDialogTitle>
+            <AlertDialogDescription>
+              Todo o conteúdo será apagado. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmClear}>Limpar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete document confirmation */}
+      <AlertDialog open={showDeleteDocumentDialog} onOpenChange={setShowDeleteDocumentDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir documento</AlertDialogTitle>
+            <AlertDialogDescription>
+              O documento será excluído permanentemente. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteDocument}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete template confirmation */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir template</AlertDialogTitle>
+            <AlertDialogDescription>
+              O template será excluído permanentemente e removido dos fixados. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteTemplate}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

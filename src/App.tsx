@@ -1,24 +1,34 @@
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Outlet } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
 import Documents from "./pages/Documents";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
-const App = () => (
+const RootLayout = () => (
   <TooltipProvider>
     <Sonner />
-    <BrowserRouter>
-      <Routes>
-        <Route element={<AppLayout />}>
-          <Route path="/" element={<Documents />} />
-          <Route path="/editor" element={<Index />} />
-        </Route>
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </BrowserRouter>
+    <Outlet />
   </TooltipProvider>
 );
+
+const router = createBrowserRouter([
+  {
+    element: <RootLayout />,
+    children: [
+      {
+        element: <AppLayout />,
+        children: [
+          { path: "/", element: <Documents /> },
+          { path: "/editor", element: <Index /> },
+        ],
+      },
+      { path: "*", element: <NotFound /> },
+    ],
+  },
+]);
+
+const App = () => <RouterProvider router={router} />;
 
 export default App;

@@ -156,7 +156,7 @@ export function SettingsSidebar({
               variant="outline"
               size="sm"
               disabled={!canDeleteDocument}
-              className="w-full justify-start border-red-600 text-red-600 hover:bg-red-600/10 hover:text-red-700"
+              className="w-full justify-start border-destructive text-destructive hover:bg-destructive/10"
             >
               <Trash2 className="h-3.5 w-3.5 mr-2" />
               Excluir Documento
@@ -168,7 +168,7 @@ export function SettingsSidebar({
               variant="outline"
               size="sm"
               disabled={!canManageTemplate}
-              className="w-full justify-start border-red-600 text-red-600 hover:bg-red-600/10 hover:text-red-700"
+              className="w-full justify-start border-destructive text-destructive hover:bg-destructive/10"
             >
               <Trash2 className="h-3.5 w-3.5 mr-2" />
               Excluir Template

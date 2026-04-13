@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { Braces, FileText, Home, LayoutTemplate, PanelLeftOpen, X } from "lucide-react";
+import { Braces, FileText, Home, LayoutTemplate, PanelLeftOpen } from "lucide-react";
 import logoImg from "@/assets/logo-bonsae.png";
 import { AppSidebar } from "./AppSidebar";
 import { cn } from "@/lib/utils";
@@ -40,7 +40,7 @@ export function AppLayout() {
       </div>
 
       {!isSidebarOpen && !isMobile && (
-        <div className="w-14 h-full border-r border-border bg-card shrink-0 flex flex-col items-center pt-4 gap-3">
+        <div className="w-14 h-full border-r border-border bg-card shrink-0 flex flex-col items-center pt-4 gap-3 animate-fade-in">
           <button
             onClick={() => setIsSidebarOpen(true)}
             className="p-2 rounded-md border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
@@ -50,16 +50,48 @@ export function AppLayout() {
             <PanelLeftOpen className="h-4 w-4" />
           </button>
           <div className="w-8 border-t border-border" />
-          <Link to="/" title="Home" aria-label="Home" className={cn("p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors", isHome && "bg-accent text-foreground")}>
+          <Link
+            to="/"
+            title="Home"
+            aria-label="Home"
+            className={cn(
+              "p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-[background-color,color,transform] duration-[var(--duration-base)] active:scale-[0.92]",
+              isHome && "bg-accent text-foreground"
+            )}
+          >
             <Home className="h-4 w-4" />
           </Link>
-          <Link to="/?tab=templates" title="Templates" aria-label="Templates" className={cn("p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors", isTemplates && "bg-accent text-foreground")}>
+          <Link
+            to="/?tab=templates"
+            title="Templates"
+            aria-label="Templates"
+            className={cn(
+              "p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-[background-color,color,transform] duration-[var(--duration-base)] active:scale-[0.92]",
+              isTemplates && "bg-accent text-foreground"
+            )}
+          >
             <LayoutTemplate className="h-4 w-4" />
           </Link>
-          <Link to="/?tab=documents" title="Documentos" aria-label="Documentos" className={cn("p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors", isDocuments && "bg-accent text-foreground")}>
+          <Link
+            to="/?tab=documents"
+            title="Documentos"
+            aria-label="Documentos"
+            className={cn(
+              "p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-[background-color,color,transform] duration-[var(--duration-base)] active:scale-[0.92]",
+              isDocuments && "bg-accent text-foreground"
+            )}
+          >
             <FileText className="h-4 w-4" />
           </Link>
-          <Link to="/?tab=variables" title="Variáveis" aria-label="Variáveis" className={cn("p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors", isVariables && "bg-accent text-foreground")}>
+          <Link
+            to="/?tab=variables"
+            title="Variáveis"
+            aria-label="Variáveis"
+            className={cn(
+              "p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-[background-color,color,transform] duration-[var(--duration-base)] active:scale-[0.92]",
+              isVariables && "bg-accent text-foreground"
+            )}
+          >
             <Braces className="h-4 w-4" />
           </Link>
         </div>

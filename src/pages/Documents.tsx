@@ -220,7 +220,7 @@ function DocumentsTab() {
 
       {filteredDocs.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-          <img src={bonsaiImg} alt="Bonsai" className="h-60 mb-6 mix-blend-multiply" />
+          <img src={bonsaiImg} alt="Bonsai" className="h-60 mb-6 mix-blend-multiply animate-float" />
           <p className="text-lg font-medium">Nenhum documento encontrado</p>
           <p className="text-sm mt-1">Crie um documento a partir de um template existente.</p>
           <Button
@@ -234,11 +234,12 @@ function DocumentsTab() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredDocs.map((doc) => (
+          {filteredDocs.map((doc, i) => (
             <div
               key={doc.id}
               onClick={() => navigate(`/editor?id=${doc.id}`)}
-              className="group cursor-pointer rounded-xl border border-border bg-card overflow-hidden hover:ring-2 hover:ring-primary/40 transition-all hover:shadow-md"
+              className="animate-fade-up group cursor-pointer rounded-xl border border-border bg-card overflow-hidden hover:ring-2 hover:ring-primary/40 transition-all hover:shadow-lg hover:-translate-y-0.5"
+              style={{ animationDelay: `${Math.min(i, 7) * 45}ms` }}
             >
               <div className="aspect-[4/3] bg-white flex items-start overflow-hidden relative">
                 {doc.html ? (
@@ -291,45 +292,47 @@ function HomeTab() {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-xl border border-border bg-card p-6">
-        <h2 className="text-lg font-semibold text-foreground">Como usar o Bonsae Documentos</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Siga este fluxo para criar documentos padronizados de forma mais rápida.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5">
-          <div className="rounded-lg border border-border p-4 bg-background/50">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Passo 1</p>
-            <p className="text-sm font-medium mt-1">Crie um template</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Monte o modelo base no editor com o cabeçalho e a estrutura principal.
-            </p>
+      {recentTemplates.length === 0 && recentDocuments.length === 0 && (
+        <section className="rounded-xl border border-border bg-card p-6">
+          <h2 className="text-lg font-semibold text-foreground">Como usar o Bonsae Documentos</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Siga este fluxo para criar documentos padronizados de forma mais rápida.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5">
+            <div className="rounded-lg border border-border p-4 bg-background/50">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Passo 1</p>
+              <p className="text-sm font-medium mt-1">Crie um template</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Monte o modelo base no editor com o cabeçalho e a estrutura principal.
+              </p>
+            </div>
+            <div className="rounded-lg border border-border p-4 bg-background/50">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Passo 2</p>
+              <p className="text-sm font-medium mt-1">Use variáveis</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Insira variáveis como {`{{nome_cliente}}`} para reaproveitar o template em novos casos.
+              </p>
+            </div>
+            <div className="rounded-lg border border-border p-4 bg-background/50">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Passo 3</p>
+              <p className="text-sm font-medium mt-1">Gere documentos</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Crie documentos a partir dos templates, preencha os dados e exporte em PDF.
+              </p>
+            </div>
           </div>
-          <div className="rounded-lg border border-border p-4 bg-background/50">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Passo 2</p>
-            <p className="text-sm font-medium mt-1">Use variáveis</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Insira variáveis como {`{{nome_cliente}}`} para reaproveitar o template em novos casos.
-            </p>
+          <div className="flex flex-wrap gap-3 mt-5">
+            <Button onClick={() => navigate("/?tab=templates")} className="gap-2">
+              <LayoutTemplate className="h-4 w-4" />
+              Ir para Templates
+            </Button>
+            <Button onClick={() => navigate("/?tab=documents")} variant="outline" className="gap-2">
+              <FileText className="h-4 w-4" />
+              Ver Documentos
+            </Button>
           </div>
-          <div className="rounded-lg border border-border p-4 bg-background/50">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Passo 3</p>
-            <p className="text-sm font-medium mt-1">Gere documentos</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Crie documentos a partir dos templates, preencha os dados e exporte em PDF.
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-3 mt-5">
-          <Button onClick={() => navigate("/?tab=templates")} className="gap-2">
-            <LayoutTemplate className="h-4 w-4" />
-            Ir para Templates
-          </Button>
-          <Button onClick={() => navigate("/?tab=documents")} variant="outline" className="gap-2">
-            <FileText className="h-4 w-4" />
-            Ver Documentos
-          </Button>
-        </div>
-      </section>
+        </section>
+      )}
 
       <section className="space-y-4">
         <div className="flex items-center justify-between">
@@ -460,17 +463,18 @@ function TemplatesTab() {
 
       {filteredTemplates.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-          <img src={bonsaiImg} alt="Bonsai" className="h-60 mb-6 mix-blend-multiply" />
+          <img src={bonsaiImg} alt="Bonsai" className="h-60 mb-6 mix-blend-multiply animate-float" />
           <p className="text-lg font-medium">Nenhum template criado</p>
           <p className="text-sm mt-1">Crie um template para começar a gerar documentos.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredTemplates.map((t) => (
+          {filteredTemplates.map((t, i) => (
             <div
               key={t.id}
               onClick={() => handleEditTemplate(t)}
-              className="group cursor-pointer rounded-xl border border-border bg-card overflow-hidden hover:ring-2 hover:ring-primary/40 transition-all hover:shadow-md"
+              className="animate-fade-up group cursor-pointer rounded-xl border border-border bg-card overflow-hidden hover:ring-2 hover:ring-primary/40 transition-all hover:shadow-lg hover:-translate-y-0.5"
+              style={{ animationDelay: `${Math.min(i, 7) * 45}ms` }}
             >
               <div className="aspect-[4/3] bg-white flex items-start overflow-hidden relative">
                 {t.html ? (
@@ -582,11 +586,11 @@ function VariablesTab() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="new-variable-key">Chave técnica</Label>
+            <Label htmlFor="new-variable-key">Chave da variável</Label>
             <Input
               id="new-variable-key"
             type="text"
-            placeholder="Chave (ex: nome_reu)"
+            placeholder="ex: nome_reu"
             value={newKey}
             onChange={(e) => setNewKey(e.target.value)}
             className="font-mono"
@@ -655,8 +659,8 @@ const Documents = () => {
         <p className="text-xs sm:text-sm text-muted-foreground mt-1">{descriptions[tab]}</p>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 sm:px-8 pb-8">
+      {/* Content — key forces remount + fade-up on every tab switch */}
+      <div key={tab} className="flex-1 overflow-y-auto px-4 sm:px-8 pb-8 animate-fade-up">
         {tab === "home" && <HomeTab />}
         {tab === "documents" && <DocumentsTab />}
         {tab === "templates" && <TemplatesTab />}

@@ -47,7 +47,7 @@ export const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>
       ref,
       () => ({
         getHTML: () => editor?.getHTML() || "",
-        setContent: (html: string) => editor?.commands.setContent(html),
+        setContent: (html: string) => editor?.commands.setContent(html, false),
         getEditorElement: () => document.getElementById("editor-print-area"),
       }),
       [editor]

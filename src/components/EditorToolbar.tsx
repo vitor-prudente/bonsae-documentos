@@ -58,7 +58,7 @@ function ToolButton({ onClick, isActive, title, children, disabled }: ToolButton
       title={title}
       disabled={disabled}
       className={cn(
-        "p-2 rounded-md transition-colors disabled:opacity-45 disabled:cursor-not-allowed",
+        "p-2 rounded-md transition-[background-color,color,transform] disabled:opacity-45 disabled:cursor-not-allowed active:scale-[0.88]",
         isActive
           ? "bg-primary/10 text-primary"
           : "text-muted-foreground hover:bg-accent hover:text-foreground"
