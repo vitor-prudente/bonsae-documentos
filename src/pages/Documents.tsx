@@ -392,32 +392,43 @@ function HomeTab() {
         <section className="rounded-xl border border-border bg-card p-6">
           <h2 className="text-lg font-semibold text-foreground">Como usar o Bonsae Documentos</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Siga este fluxo para criar documentos padronizados de forma mais rápida.
+            Siga este fluxo para criar documentos padronizados com os dados reais dos clientes.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mt-5">
             <div className="rounded-lg border border-border p-4 bg-background/50">
               <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Passo 1</p>
-              <p className="text-sm font-medium mt-1">Crie um template</p>
+              <p className="text-sm font-medium mt-1">Cadastre os clientes</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Monte o modelo base no editor com o cabeçalho e a estrutura principal.
+                Na aba Clientes, preencha os valores reais das variáveis para cada pessoa ou empresa.
               </p>
             </div>
             <div className="rounded-lg border border-border p-4 bg-background/50">
               <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Passo 2</p>
-              <p className="text-sm font-medium mt-1">Use variáveis</p>
+              <p className="text-sm font-medium mt-1">Crie um template</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Insira variáveis como {`{{nome_cliente}}`} para reaproveitar o template em novos casos.
+                Escolha um cliente ou siga sem cliente, monte o modelo base e adicione o papel timbrado.
               </p>
             </div>
             <div className="rounded-lg border border-border p-4 bg-background/50">
               <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Passo 3</p>
+              <p className="text-sm font-medium mt-1">Use variáveis</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Insira variáveis como {`{{nome_cliente}}`}; com cliente selecionado, o editor mostra os valores reais.
+              </p>
+            </div>
+            <div className="rounded-lg border border-border p-4 bg-background/50">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Passo 4</p>
               <p className="text-sm font-medium mt-1">Gere documentos</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Crie documentos a partir dos templates, preencha os dados e exporte em PDF.
+                Crie documentos a partir dos templates; eles nascem preenchidos e podem ser exportados em PDF.
               </p>
             </div>
           </div>
           <div className="flex flex-wrap gap-3 mt-5">
+            <Button onClick={() => navigate("/?tab=clients")} variant="outline" className="gap-2">
+              <Users className="h-4 w-4" />
+              Ir para Clientes
+            </Button>
             <Button onClick={() => navigate("/?tab=templates")} className="gap-2">
               <LayoutTemplate className="h-4 w-4" />
               Ir para Templates
