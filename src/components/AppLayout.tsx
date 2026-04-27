@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { Braces, FileText, Home, LayoutTemplate, PanelLeftOpen } from "lucide-react";
+import { Braces, FileText, Home, LayoutTemplate, PanelLeftOpen, Users } from "lucide-react";
 import logoImg from "@/assets/logo-bonsae.png";
 import { AppSidebar } from "./AppSidebar";
 import { cn } from "@/lib/utils";
@@ -14,10 +14,12 @@ export function AppLayout() {
     location.pathname === "/" &&
     !location.search.includes("tab=documents") &&
     !location.search.includes("tab=variables") &&
+    !location.search.includes("tab=clients") &&
     !location.search.includes("tab=templates");
   const isDocuments = location.search.includes("tab=documents");
   const isTemplates = location.search.includes("tab=templates");
   const isVariables = location.search.includes("tab=variables");
+  const isClients = location.search.includes("tab=clients");
 
   return (
     <div className="flex h-screen overflow-hidden relative">
@@ -82,6 +84,17 @@ export function AppLayout() {
             )}
           >
             <FileText className="h-4 w-4" />
+          </Link>
+          <Link
+            to="/?tab=clients"
+            title="Clientes"
+            aria-label="Clientes"
+            className={cn(
+              "p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-[background-color,color,transform] duration-[var(--duration-base)] active:scale-[0.92]",
+              isClients && "bg-accent text-foreground"
+            )}
+          >
+            <Users className="h-4 w-4" />
           </Link>
           <Link
             to="/?tab=variables"

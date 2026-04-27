@@ -14,6 +14,7 @@ interface DocumentEditorProps {
   letterheadUrl: string | null;
   onContentChange?: (html: string) => void;
   initialContent?: string;
+  variableValues?: Record<string, string>;
 }
 
 export interface DocumentEditorRef {
@@ -23,7 +24,12 @@ export interface DocumentEditorRef {
 }
 
 export const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>(
-  ({ letterheadUrl, onContentChange, initialContent }, ref) => {
+  ({ letterheadUrl, onContentChange, initialContent, variableValues = {} }, ref) => {
+    const getResolvedValue = useCallback(
+      (key: string) => variableValues[key]?.trim() || null,
+      [variableValues]
+    );
+
     const editor = useEditor({
       extensions: [
         StarterKit,
@@ -38,7 +44,8 @@ export const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>
         VariableNode,
       ],
       content: initialContent || "",
-      onUpdate: ({ editor }) => {
+      onUpdate: ({ editor, transaction }) => {
+        if (transaction.getMeta("skipDirty")) return;
         onContentChange?.(editor.getHTML());
       },
     });
@@ -62,6 +69,30 @@ export const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>
       }
     }, [editor, initialContent]);
 
+    useEffect(() => {
+      if (!editor) return;
+      const tr = editor.state.tr;
+      let changed = false;
+
+      editor.state.doc.descendants((node, pos) => {
+        if (node.type.name !== "variable") return;
+        const resolvedValue = getResolvedValue(node.attrs.key);
+        if ((node.attrs.resolvedValue || null) !== resolvedValue) {
+          tr.setNodeMarkup(pos, undefined, {
+            ...node.attrs,
+            resolvedValue,
+          });
+          changed = true;
+        }
+      });
+
+      if (changed) {
+        tr.setMeta("skipDirty", true);
+        tr.setMeta("addToHistory", false);
+        editor.view.dispatch(tr);
+      }
+    }, [editor, getResolvedValue]);
+
     const handleDrop = useCallback(
       (e: React.DragEvent) => {
         e.preventDefault();
@@ -73,13 +104,13 @@ export const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>
             .focus()
             .insertContent({
               type: "variable",
-              attrs: { key: variable, label: label || variable },
+              attrs: { key: variable, label: label || variable, resolvedValue: getResolvedValue(variable) },
             })
             .insertContent(" ")
             .run();
         }
       },
-      [editor]
+      [editor, getResolvedValue]
     );
 
     const handleDragOver = (e: React.DragEvent) => {
@@ -101,6 +132,7 @@ export const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>
             attrs: {
               key: customEvent.detail.key,
               label: customEvent.detail.label || customEvent.detail.key,
+              resolvedValue: getResolvedValue(customEvent.detail.key),
             },
           })
           .insertContent(" ")
@@ -109,31 +141,27 @@ export const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>
 
       window.addEventListener("insert-variable", handleInsertVariable);
       return () => window.removeEventListener("insert-variable", handleInsertVariable);
-    }, [editor]);
+    }, [editor, getResolvedValue]);
 
     return (
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 min-h-0 flex flex-col min-w-0">
         <EditorToolbar editor={editor} />
-        <div className="flex-1 overflow-y-auto bg-editor-bg p-2 sm:p-8">
+        <div className="flex-1 min-h-0 overflow-y-auto bg-editor-bg p-2 pb-10 sm:p-8 sm:pb-16">
           <div
             id="editor-print-area"
-            className="max-w-[800px] mx-auto bg-card rounded-lg shadow-sm border border-border"
+            className="relative max-w-[800px] aspect-[210/297] min-h-[720px] mx-auto bg-card rounded-lg shadow-sm border border-border overflow-hidden"
             onDrop={handleDrop}
             onDragOver={handleDragOver}
           >
-            {/* Letterhead */}
             {letterheadUrl && (
-              <div className="border-b border-border">
-                <img
-                  src={letterheadUrl}
-                  alt="Papel timbrado"
-                  className="w-full h-auto"
-                  style={{ maxHeight: "200px", objectFit: "contain" }}
-                />
-              </div>
+              <img
+                src={letterheadUrl}
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 h-full w-full object-fill pointer-events-none select-none"
+              />
             )}
-            {/* Editor */}
-            <div className="p-4 sm:p-10">
+            <div className="relative z-10 p-4 sm:p-10">
               <EditorContent editor={editor} />
             </div>
           </div>

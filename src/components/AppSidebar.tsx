@@ -1,18 +1,27 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Plus,
   FileText,
   LayoutTemplate,
   Braces,
   Home,
+  Users,
   Pin,
   ChevronRight,
   PanelLeftClose,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import logoImg from "@/assets/logo-bonsae.png";
 import { cn } from "@/lib/utils";
+import { getClientList, type SavedClient } from "@/lib/clients";
 
 export interface PinnedTemplate {
   id: string;
@@ -88,10 +97,14 @@ interface AppSidebarProps {
 
 export function AppSidebar({ isOpen, onToggle }: AppSidebarProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [pinned, setPinned] = useState<PinnedTemplate[]>([]);
+  const [clients, setClients] = useState<SavedClient[]>([]);
+  const [showClientPicker, setShowClientPicker] = useState(false);
 
   useEffect(() => {
     setPinned(getPinnedTemplates());
+    setClients(getClientList());
 
     const handleStorage = () => setPinned(getPinnedTemplates());
     window.addEventListener("storage", handleStorage);
@@ -106,12 +119,29 @@ export function AppSidebar({ isOpen, onToggle }: AppSidebarProps) {
     location.pathname === "/" &&
     (!location.search || (!location.search.includes("tab=documents") &&
       !location.search.includes("tab=templates") &&
-      !location.search.includes("tab=variables")));
+      !location.search.includes("tab=variables") &&
+      !location.search.includes("tab=clients")));
   const isDocuments = location.search.includes("tab=documents");
   const isTemplates =
     location.search.includes("tab=templates");
   const isVariables = location.search.includes("tab=variables");
+  const isClients = location.search.includes("tab=clients");
   const isExplicitHome = location.search.includes("tab=home");
+
+  const handleOpenTemplatePicker = () => {
+    setClients(getClientList());
+    setShowClientPicker(true);
+  };
+
+  const handleCreateTemplateForClient = (client: SavedClient) => {
+    setShowClientPicker(false);
+    navigate(`/editor?type=template&clientId=${client.id}&draftId=${crypto.randomUUID()}`);
+  };
+
+  const handleCreateTemplateWithoutClient = () => {
+    setShowClientPicker(false);
+    navigate(`/editor?type=template&draftId=${crypto.randomUUID()}`);
+  };
 
   return (
     <aside
@@ -142,11 +172,9 @@ export function AppSidebar({ isOpen, onToggle }: AppSidebarProps) {
 
       {/* Create button */}
       <div className="px-3 mb-2">
-        <Button asChild className="w-full gap-2 justify-start" size="default">
-          <Link to="/editor?type=template">
-            <Plus className="h-4 w-4" />
-            Criar Template
-          </Link>
+        <Button onClick={handleOpenTemplatePicker} className="w-full gap-2 justify-start" size="default">
+          <Plus className="h-4 w-4" />
+          Criar Template
         </Button>
       </div>
 
@@ -172,6 +200,12 @@ export function AppSidebar({ isOpen, onToggle }: AppSidebarProps) {
           label="Documentos"
           active={isDocuments}
           to="/?tab=documents"
+        />
+        <NavItem
+          icon={<Users className="h-4 w-4" />}
+          label="Clientes"
+          active={isClients}
+          to="/?tab=clients"
         />
         <NavItem
           icon={<Braces className="h-4 w-4" />}
@@ -207,6 +241,46 @@ export function AppSidebar({ isOpen, onToggle }: AppSidebarProps) {
           </div>
         )}
       </div>
+
+      <Dialog open={showClientPicker} onOpenChange={setShowClientPicker}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Escolha o cliente</DialogTitle>
+            <DialogDescription>
+              O template será criado exibindo as variáveis reais do cliente selecionado.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[360px] overflow-y-auto">
+            <button
+              onClick={handleCreateTemplateWithoutClient}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-border hover:border-primary/40 hover:bg-accent/50 transition-all text-left"
+            >
+              <Braces className="h-5 w-5 text-primary shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-foreground truncate">Sem cliente</p>
+                <p className="text-xs text-muted-foreground">
+                  Usar variáveis sem dados preenchidos
+                </p>
+              </div>
+            </button>
+            {clients.map((client) => (
+              <button
+                key={client.id}
+                onClick={() => handleCreateTemplateForClient(client)}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-border hover:border-primary/40 hover:bg-accent/50 transition-all text-left"
+              >
+                <Users className="h-5 w-5 text-primary shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground truncate">{client.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {client.values.nome_cliente || "Cliente sem nome preenchido"}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </aside>
   );
 }

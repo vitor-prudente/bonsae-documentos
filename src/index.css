@@ -30,6 +30,26 @@
   50%       { transform: translateY(-7px); }
 }
 
+@keyframes client-panel-in {
+  from { opacity: 0; transform: translate3d(10px, 0, 0) scale(0.995); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes client-field-in {
+  from { opacity: 0; transform: translate3d(0, 6px, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+.client-switch-motion {
+  animation: client-panel-in 260ms var(--ease-out-quart) both;
+  will-change: transform, opacity;
+}
+
+.client-field-motion {
+  animation: client-field-in 220ms var(--ease-out-quart) both;
+  will-change: transform, opacity;
+}
+
 /* Respect user's motion preference */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

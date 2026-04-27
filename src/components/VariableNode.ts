@@ -12,6 +12,7 @@ export const VariableNode = Node.create({
     return {
       key: { default: null },
       label: { default: null },
+      resolvedValue: { default: null },
     };
   },
 
@@ -31,9 +32,10 @@ export const VariableNode = Node.create({
   },
 
   renderHTML({ node, HTMLAttributes }) {
+    const { resolvedValue: _resolvedValue, ...safeAttributes } = HTMLAttributes;
     return [
       "span",
-      mergeAttributes(HTMLAttributes, {
+      mergeAttributes(safeAttributes, {
         "data-variable": node.attrs.key,
         "data-label": node.attrs.label,
         class: "variable-badge",

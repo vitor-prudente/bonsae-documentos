@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -10,11 +9,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, FileText, Trash2, Search, Pin, PinOff, Variable, LayoutTemplate, ArrowRight } from "lucide-react";
+import { Plus, FileText, Trash2, Search, Pin, PinOff, Variable, LayoutTemplate, ArrowRight, Users, UserRound, Save, Braces } from "lucide-react";
 import { toast } from "sonner";
 import bonsaiImg from "@/assets/bonsai-empty.png";
 import { getPinnedTemplates, togglePinTemplate, type PinnedTemplate } from "@/components/AppSidebar";
 import { getDocumentPreviewText } from "@/lib/documentPreview";
+import { getClientList, saveClientList, type SavedClient } from "@/lib/clients";
+import { getDraftTitleBase, makeUniqueTitle } from "@/lib/titles";
 
 const STORAGE_LIST_KEY = "legal-doc-list";
 const TEMPLATE_LIST_KEY = "bonsae-template-list";
@@ -25,7 +26,9 @@ export interface SavedDocument {
   title: string;
   html: string;
   letterheadUrl: string | null;
+  letterheadName?: string | null;
   updatedAt: string;
+  clientId?: string | null;
 }
 
 export interface SavedTemplate {
@@ -33,7 +36,9 @@ export interface SavedTemplate {
   title: string;
   html: string;
   letterheadUrl: string | null;
+  letterheadName?: string | null;
   updatedAt: string;
+  clientId?: string | null;
 }
 
 export interface CustomVariable {
@@ -111,6 +116,29 @@ const defaultVariables: CustomVariable[] = [
   { id: "10", key: "vara", label: "Vara", icon: "gavel" },
 ];
 
+export function getAvailableVariables(): CustomVariable[] {
+  const custom = getCustomVariables();
+  if (custom.length > 0) return custom;
+  saveCustomVariables(defaultVariables);
+  return defaultVariables;
+}
+
+export function applyClientValuesToTemplateHtml(html: string, values: Record<string, string>) {
+  if (!html || typeof document === "undefined") return html;
+
+  const template = document.createElement("template");
+  template.innerHTML = html;
+  template.content.querySelectorAll<HTMLElement>("span[data-variable]").forEach((node) => {
+    const key = node.dataset.variable;
+    const value = key ? values[key]?.trim() : "";
+    if (value) {
+      node.replaceWith(document.createTextNode(value));
+    }
+  });
+
+  return template.innerHTML;
+}
+
 const formatDate = (dateStr: string) => {
   try {
     return new Date(dateStr).toLocaleDateString("pt-BR", {
@@ -129,12 +157,15 @@ function DocumentsTab() {
   const navigate = useNavigate();
   const [documents, setDocuments] = useState<SavedDocument[]>([]);
   const [templates, setTemplates] = useState<SavedTemplate[]>([]);
+  const [clients, setClients] = useState<SavedClient[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [showTemplateClientPicker, setShowTemplateClientPicker] = useState(false);
 
   useEffect(() => {
     setDocuments(getDocumentList());
     setTemplates(getTemplateList());
+    setClients(getClientList());
   }, []);
 
   const filteredDocs = documents.filter((doc) =>
@@ -150,18 +181,41 @@ function DocumentsTab() {
   };
 
   const handleNewFromTemplate = (t: SavedTemplate) => {
+    const client = clients.find((c) => c.id === t.clientId);
+    const hydratedHtml = client
+      ? applyClientValuesToTemplateHtml(t.html, client.values)
+      : t.html;
+    const docs = getDocumentList();
+    const titleBase = getDraftTitleBase("document", client?.name);
     const newDoc: SavedDocument = {
       id: crypto.randomUUID(),
-      title: `${t.title} - Documento`,
-      html: t.html,
+      title: makeUniqueTitle(titleBase, docs.map((doc) => doc.title)),
+      html: hydratedHtml,
       letterheadUrl: t.letterheadUrl,
+      letterheadName: t.letterheadName || null,
       updatedAt: new Date().toISOString(),
+      clientId: client?.id || null,
     };
-    const docs = getDocumentList();
     docs.unshift(newDoc);
     saveDocumentList(docs);
     navigate(`/editor?id=${newDoc.id}`);
     toast.success("Documento criado a partir do template.");
+  };
+
+  const handleOpenTemplateClientPicker = () => {
+    setShowTemplatePicker(false);
+    setClients(getClientList());
+    setShowTemplateClientPicker(true);
+  };
+
+  const handleCreateTemplateForClient = (client: SavedClient) => {
+    setShowTemplateClientPicker(false);
+    navigate(`/editor?type=template&clientId=${client.id}&draftId=${crypto.randomUUID()}`);
+  };
+
+  const handleCreateTemplateWithoutClient = () => {
+    setShowTemplateClientPicker(false);
+    navigate(`/editor?type=template&draftId=${crypto.randomUUID()}`);
   };
 
   return (
@@ -193,7 +247,7 @@ function DocumentsTab() {
               <div className="text-center py-8">
                 <LayoutTemplate className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
                 <p className="text-sm text-muted-foreground">Nenhum template disponível.</p>
-                <Button onClick={() => { setShowTemplatePicker(false); navigate("/?tab=templates"); }} variant="outline" size="sm" className="mt-3 gap-2">
+                <Button onClick={handleOpenTemplateClientPicker} variant="outline" size="sm" className="mt-3 gap-2">
                   <Plus className="h-4 w-4" />
                   Criar Template
                 </Button>
@@ -209,12 +263,54 @@ function DocumentsTab() {
                     <LayoutTemplate className="h-5 w-5 text-primary shrink-0" />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-foreground truncate">{t.title}</p>
-                      <p className="text-xs text-muted-foreground">{formatDate(t.updatedAt)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {clients.find((c) => c.id === t.clientId)?.name || "Sem cliente associado"} · {formatDate(t.updatedAt)}
+                      </p>
                     </div>
                   </button>
                 ))}
               </div>
             )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showTemplateClientPicker} onOpenChange={setShowTemplateClientPicker}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Escolha o cliente</DialogTitle>
+            <DialogDescription>
+              O template será criado exibindo as variáveis reais do cliente selecionado.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[360px] overflow-y-auto">
+            <button
+              onClick={handleCreateTemplateWithoutClient}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-border hover:border-primary/40 hover:bg-accent/50 transition-all text-left"
+            >
+              <Braces className="h-5 w-5 text-primary shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-foreground truncate">Sem cliente</p>
+                <p className="text-xs text-muted-foreground">
+                  Usar variáveis sem dados preenchidos
+                </p>
+              </div>
+            </button>
+            {clients.map((client) => (
+              <button
+                key={client.id}
+                onClick={() => handleCreateTemplateForClient(client)}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-border hover:border-primary/40 hover:bg-accent/50 transition-all text-left"
+              >
+                <Users className="h-5 w-5 text-primary shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground truncate">{client.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {client.values.nome_cliente || "Cliente sem nome preenchido"}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -404,11 +500,14 @@ function HomeTab() {
 function TemplatesTab() {
   const navigate = useNavigate();
   const [templates, setTemplates] = useState<SavedTemplate[]>([]);
+  const [clients, setClients] = useState<SavedClient[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [pinned, setPinned] = useState<PinnedTemplate[]>([]);
+  const [showClientPicker, setShowClientPicker] = useState(false);
 
   useEffect(() => {
     setTemplates(getTemplateList());
+    setClients(getClientList());
     setPinned(getPinnedTemplates());
   }, []);
 
@@ -435,7 +534,18 @@ function TemplatesTab() {
   const isPinned = (id: string) => pinned.some((p) => p.id === id);
 
   const handleCreateTemplate = () => {
-    navigate("/editor?type=template");
+    setClients(getClientList());
+    setShowClientPicker(true);
+  };
+
+  const handleCreateTemplateForClient = (client: SavedClient) => {
+    setShowClientPicker(false);
+    navigate(`/editor?type=template&clientId=${client.id}&draftId=${crypto.randomUUID()}`);
+  };
+
+  const handleCreateTemplateWithoutClient = () => {
+    setShowClientPicker(false);
+    navigate(`/editor?type=template&draftId=${crypto.randomUUID()}`);
   };
 
   const handleEditTemplate = (t: SavedTemplate) => {
@@ -460,6 +570,46 @@ function TemplatesTab() {
           Novo Template
         </Button>
       </div>
+
+      <Dialog open={showClientPicker} onOpenChange={setShowClientPicker}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Escolha o cliente</DialogTitle>
+            <DialogDescription>
+              O template será criado exibindo as variáveis reais do cliente selecionado.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[360px] overflow-y-auto">
+            <button
+              onClick={handleCreateTemplateWithoutClient}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-border hover:border-primary/40 hover:bg-accent/50 transition-all text-left"
+            >
+              <Braces className="h-5 w-5 text-primary shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-foreground truncate">Sem cliente</p>
+                <p className="text-xs text-muted-foreground">
+                  Usar variáveis sem dados preenchidos
+                </p>
+              </div>
+            </button>
+            {clients.map((client) => (
+              <button
+                key={client.id}
+                onClick={() => handleCreateTemplateForClient(client)}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-border hover:border-primary/40 hover:bg-accent/50 transition-all text-left"
+              >
+                <Users className="h-5 w-5 text-primary shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground truncate">{client.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {client.values.nome_cliente || "Cliente sem nome preenchido"}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {filteredTemplates.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
@@ -522,93 +672,20 @@ function TemplatesTab() {
 
 function VariablesTab() {
   const [variables, setVariables] = useState<CustomVariable[]>([]);
-  const [newLabel, setNewLabel] = useState("");
-  const [newKey, setNewKey] = useState("");
 
   useEffect(() => {
-    const custom = getCustomVariables();
-    if (custom.length === 0) {
-      // Initialize with defaults
-      saveCustomVariables(defaultVariables);
-      setVariables(defaultVariables);
-    } else {
-      setVariables(custom);
-    }
+    setVariables(getAvailableVariables());
   }, []);
-
-  const handleAdd = () => {
-    if (!newLabel.trim() || !newKey.trim()) {
-      toast.error("Preencha o nome e a chave da variável.");
-      return;
-    }
-    if (variables.some((v) => v.key === newKey.trim())) {
-      toast.error("Já existe uma variável com essa chave.");
-      return;
-    }
-    const newVar: CustomVariable = {
-      id: crypto.randomUUID(),
-      key: newKey.trim().toLowerCase().replace(/\s+/g, "_"),
-      label: newLabel.trim(),
-      icon: "file-text",
-    };
-    const updated = [...variables, newVar];
-    saveCustomVariables(updated);
-    setVariables(updated);
-    setNewLabel("");
-    setNewKey("");
-    toast.success("Variável criada!");
-  };
-
-  const handleDelete = (id: string) => {
-    const updated = variables.filter((v) => v.id !== id);
-    saveCustomVariables(updated);
-    setVariables(updated);
-    toast.success("Variável removida.");
-  };
 
   return (
     <>
-      {/* Create new */}
-      <div className="bg-card border border-border rounded-xl p-5 mb-6">
-        <h3 className="text-sm font-semibold text-foreground mb-3">Nova Variável</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="new-variable-label">Nome da variável</Label>
-            <Input
-              id="new-variable-label"
-            type="text"
-            placeholder="Nome (ex: Nome do Réu)"
-            value={newLabel}
-            onChange={(e) => {
-              setNewLabel(e.target.value);
-              setNewKey(e.target.value.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, ""));
-            }}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="new-variable-key">Chave da variável</Label>
-            <Input
-              id="new-variable-key"
-            type="text"
-            placeholder="ex: nome_reu"
-            value={newKey}
-            onChange={(e) => setNewKey(e.target.value)}
-            className="font-mono"
-            />
-          </div>
-        </div>
-        <Button onClick={handleAdd} size="sm" className="gap-2">
-          <Plus className="h-4 w-4" />
-          Adicionar Variável
-        </Button>
-      </div>
-
       {/* Variable list */}
-      <div className="space-y-2">
-        {variables.map((v) => (
+      <div className="space-y-2 client-switch-motion">
+        {variables.map((v, index) => (
           <div
             key={v.id}
-            className="flex items-center gap-3 px-4 py-3 bg-card border border-border rounded-xl hover:border-primary/30 transition-colors"
+            className="flex items-center gap-3 px-4 py-3 bg-card border border-border rounded-xl hover:border-primary/30 transition-colors client-field-motion"
+            style={{ animationDelay: `${Math.min(index, 8) * 24}ms` }}
           >
             <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
               <Variable className="h-4 w-4 text-primary" />
@@ -617,17 +694,128 @@ function VariablesTab() {
               <p className="text-sm font-medium text-foreground">{v.label}</p>
               <p className="text-xs text-muted-foreground font-mono">{`{{${v.key}}}`}</p>
             </div>
-            <button
-              onClick={() => handleDelete(v.id)}
-              className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-accent transition-colors"
-              title="Remover"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
           </div>
         ))}
       </div>
     </>
+  );
+}
+
+function ClientsTab() {
+  const [clients, setClients] = useState<SavedClient[]>([]);
+  const [variables, setVariables] = useState<CustomVariable[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [draftValues, setDraftValues] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const loadedClients = getClientList();
+    setClients(loadedClients);
+    setVariables(getAvailableVariables());
+    if (loadedClients.length > 0) {
+      setSelectedClientId(loadedClients[0].id);
+      setDraftValues(loadedClients[0].values);
+    }
+  }, []);
+
+  const selectedClient = clients.find((client) => client.id === selectedClientId) || null;
+
+  const handleSelectClient = (client: SavedClient) => {
+    if (client.id === selectedClientId) return;
+    setSelectedClientId(client.id);
+    setDraftValues({ ...client.values });
+  };
+
+  const handleSaveClient = () => {
+    if (!selectedClient) return;
+    const updatedClients = clients.map((client) =>
+      client.id === selectedClient.id
+        ? { ...client, values: draftValues, updatedAt: new Date().toISOString() }
+        : client
+    );
+    setClients(updatedClients);
+    saveClientList(updatedClients);
+    toast.success("Dados do cliente salvos.");
+  };
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-5">
+      <div className="space-y-2">
+        {clients.map((client) => {
+          const isSelected = client.id === selectedClientId;
+          return (
+            <button
+              key={client.id}
+              onClick={() => handleSelectClient(client)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-[background-color,border-color,box-shadow,transform] duration-[var(--duration-base)] [transition-timing-function:var(--ease-out-quart)] hover:-translate-y-0.5 active:scale-[0.99] ${
+                isSelected
+                  ? "border-primary/50 bg-primary/10 shadow-sm"
+                  : "border-border bg-card hover:border-primary/30 hover:bg-accent/40"
+              }`}
+            >
+              <div
+                className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 transition-[background-color,transform] duration-[var(--duration-base)] [transition-timing-function:var(--ease-out-quart)] ${
+                  isSelected ? "bg-primary/15 scale-105" : "bg-primary/10"
+                }`}
+              >
+                <UserRound className="h-4 w-4 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground truncate">{client.name}</p>
+                <p className="text-xs text-muted-foreground">{formatDate(client.updatedAt)}</p>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div key={`client-header-${selectedClient?.id || "empty"}`} className="min-w-0 client-switch-motion">
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground truncate">
+                {selectedClient?.name || "Selecione um cliente"}
+              </h3>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Preencha os valores reais usados nos templates.
+            </p>
+          </div>
+          <Button onClick={handleSaveClient} size="sm" className="gap-2" disabled={!selectedClient}>
+            <Save className="h-4 w-4" />
+            Salvar
+          </Button>
+        </div>
+
+        <div
+          key={`client-form-${selectedClient?.id || "empty"}`}
+          className="p-5 grid grid-cols-1 md:grid-cols-2 gap-4 client-switch-motion"
+        >
+          {variables.map((variable, index) => (
+            <div
+              key={variable.key}
+              className="space-y-1.5 client-field-motion"
+              style={{ animationDelay: `${Math.min(index, 8) * 24}ms` }}
+            >
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                {variable.label}
+              </label>
+              <Input
+                value={draftValues[variable.key] || ""}
+                onChange={(event) =>
+                  setDraftValues((current) => ({
+                    ...current,
+                    [variable.key]: event.target.value,
+                  }))
+                }
+                placeholder={`Valor para {{${variable.key}}}`}
+                disabled={!selectedClient}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -642,13 +830,15 @@ const Documents = () => {
     documents: "Documentos",
     templates: "Templates",
     variables: "Variáveis",
+    clients: "Clientes",
   };
 
   const descriptions: Record<string, string> = {
     home: "Comece por aqui para entender o fluxo e acessar seus arquivos recentes.",
     documents: "Documentos preenchidos com dados reais.",
     templates: "Modelos base reutilizáveis para criar documentos.",
-    variables: "Gerencie as variáveis disponíveis nos templates.",
+    variables: "Consulte as variáveis disponíveis nos templates.",
+    clients: "Cadastre os valores reais das variáveis para cada cliente.",
   };
 
   return (
@@ -665,6 +855,7 @@ const Documents = () => {
         {tab === "documents" && <DocumentsTab />}
         {tab === "templates" && <TemplatesTab />}
         {tab === "variables" && <VariablesTab />}
+        {tab === "clients" && <ClientsTab />}
       </div>
     </div>
   );

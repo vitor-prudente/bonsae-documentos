@@ -1,6 +1,7 @@
 import { User, CreditCard, MapPin, DollarSign, Calendar, FileText, Briefcase, BadgeCheck, Building, Gavel, type LucideIcon } from "lucide-react";
 import { variableIconMap } from "./variableIcons";
 import { useEffect, useState } from "react";
+import { getAvailableVariables, type CustomVariable } from "@/pages/Documents";
 
 const iconComponents: Record<string, LucideIcon> = {
   user: User,
@@ -15,49 +16,25 @@ const iconComponents: Record<string, LucideIcon> = {
   gavel: Gavel,
 };
 
-interface SidebarVariable {
-  id?: string;
-  key: string;
-  label: string;
+interface VariablesSidebarProps {
+  variableValues?: Record<string, string>;
 }
 
-const defaultVariables: SidebarVariable[] = [
-  { key: "nome_cliente", label: "Nome do Cliente" },
-  { key: "cpf_cnpj", label: "CPF/CNPJ" },
-  { key: "endereco", label: "Endereço" },
-  { key: "valor_causa", label: "Valor da Causa" },
-  { key: "data_atual", label: "Data Atual" },
-  { key: "numero_processo", label: "Nº do Processo" },
-  { key: "nome_advogado", label: "Nome do Advogado" },
-  { key: "oab", label: "Número OAB" },
-  { key: "comarca", label: "Comarca" },
-  { key: "vara", label: "Vara" },
-];
-
-export function VariablesSidebar() {
-  const [variables, setVariables] = useState<SidebarVariable[]>(defaultVariables);
+export function VariablesSidebar({ variableValues = {} }: VariablesSidebarProps) {
+  const [variables, setVariables] = useState<CustomVariable[]>([]);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("bonsae-variable-list");
-      if (!raw) return;
-      const custom = JSON.parse(raw) as SidebarVariable[];
-      if (Array.isArray(custom) && custom.length > 0) {
-        setVariables(custom);
-      }
-    } catch {
-      // ignore malformed localStorage and keep defaults
-    }
+    setVariables(getAvailableVariables());
   }, []);
 
-  const handleDragStart = (e: React.DragEvent, variable: SidebarVariable) => {
+  const handleDragStart = (e: React.DragEvent, variable: CustomVariable) => {
     e.dataTransfer.setData("text/plain", `{{${variable.key}}}`);
     e.dataTransfer.setData("application/x-variable", variable.key);
     e.dataTransfer.setData("application/x-variable-label", variable.label);
     e.dataTransfer.effectAllowed = "copy";
   };
 
-  const handleInsertClick = (variable: SidebarVariable) => {
+  const handleInsertClick = (variable: CustomVariable) => {
     window.dispatchEvent(
       new CustomEvent("insert-variable", {
         detail: { key: variable.key, label: variable.label },
@@ -79,6 +56,7 @@ export function VariablesSidebar() {
         {variables.map((v) => {
           const iconName = variableIconMap[v.key] || "user";
           const IconComponent = iconComponents[iconName] || User;
+          const value = variableValues[v.key]?.trim();
           return (
             <button
               key={v.key}
@@ -90,7 +68,12 @@ export function VariablesSidebar() {
             >
               <IconComponent className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
               <div className="flex-1 min-w-0">
-                <span className="text-sm font-medium text-foreground">{v.label}</span>
+                <span className="block text-sm font-medium text-foreground truncate">{v.label}</span>
+                {value && (
+                  <span className="block text-xs text-muted-foreground truncate mt-0.5">
+                    {value}
+                  </span>
+                )}
               </div>
             </button>
           );

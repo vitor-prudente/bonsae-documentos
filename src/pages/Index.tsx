@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams, useBlocker } from "react-router-dom";
 import { VariablesSidebar } from "@/components/VariablesSidebar";
 import { SettingsSidebar } from "@/components/SettingsSidebar";
@@ -16,6 +16,8 @@ import {
   type SavedDocument,
   type SavedTemplate,
 } from "@/pages/Documents";
+import { getClientList, type SavedClient } from "@/lib/clients";
+import { getDraftTitleBase, makeUniqueTitle } from "@/lib/titles";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,10 +34,13 @@ const Index = () => {
   const [searchParams] = useSearchParams();
   const docId = searchParams.get("id");
   const isTemplate = searchParams.get("type") === "template";
+  const initialClientId = searchParams.get("clientId");
+  const draftId = searchParams.get("draftId");
 
   const [letterheadUrl, setLetterheadUrl] = useState<string | null>(null);
+  const [letterheadName, setLetterheadName] = useState<string | null>(null);
   const [documentTitle, setDocumentTitle] = useState(
-    isTemplate ? "Novo Template" : "Novo Documento"
+    isTemplate ? "Novo template" : "Novo documento"
   );
   const isMobile = useIsMobile();
   const [showSettings, setShowSettings] = useState(!isMobile);
@@ -47,11 +52,39 @@ const Index = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [isTemplatePinned, setIsTemplatePinned] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  const [clients, setClients] = useState<SavedClient[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDeleteDocumentDialog, setShowDeleteDocumentDialog] = useState(false);
 
   const blocker = useBlocker(isDirty);
+
+  useEffect(() => {
+    setClients(getClientList());
+  }, []);
+
+  useEffect(() => {
+    if (docId) return;
+    const loadedClients = getClientList();
+    const selectedClient = loadedClients.find((client) => client.id === initialClientId);
+    const titleBase = getDraftTitleBase(isTemplate ? "template" : "document", selectedClient?.name);
+    const existingTitles = isTemplate
+      ? getTemplateList().map((template) => template.title)
+      : getDocumentList().map((document) => document.title);
+
+    setClients(loadedClients);
+    setDocumentTitle(makeUniqueTitle(titleBase, existingTitles));
+    setLetterheadUrl(null);
+    setLetterheadName(null);
+    setInitialContent("");
+    setCurrentDocId(null);
+    setSavingAsTemplate(isTemplate);
+    setSelectedClientId(isTemplate ? initialClientId : null);
+    setIsTemplatePinned(false);
+    editorRef.current?.setContent("");
+    setIsDirty(false);
+  }, [docId, draftId, initialClientId, isTemplate]);
 
   // Load existing document or template
   useEffect(() => {
@@ -61,9 +94,11 @@ const Index = () => {
       if (doc) {
         setDocumentTitle(doc.title);
         setLetterheadUrl(doc.letterheadUrl);
+        setLetterheadName(doc.letterheadName || null);
         setInitialContent(doc.html);
         setCurrentDocId(doc.id);
         setSavingAsTemplate(false);
+        setSelectedClientId(doc.clientId || null);
         setIsDirty(false);
         return;
       }
@@ -73,13 +108,23 @@ const Index = () => {
       if (tmpl) {
         setDocumentTitle(tmpl.title);
         setLetterheadUrl(tmpl.letterheadUrl);
+        setLetterheadName(tmpl.letterheadName || null);
         setInitialContent(tmpl.html);
         setCurrentDocId(tmpl.id);
         setSavingAsTemplate(true);
+        setSelectedClientId(tmpl.clientId || null);
         setIsDirty(false);
       }
     }
   }, [docId]);
+
+  const selectedClientValues = useMemo(
+    () =>
+      selectedClientId
+        ? clients.find((client) => client.id === selectedClientId)?.values || {}
+        : {},
+    [clients, selectedClientId]
+  );
 
   useEffect(() => {
     if (!savingAsTemplate || !currentDocId) {
@@ -138,14 +183,14 @@ const Index = () => {
       if (currentDocId) {
         const idx = templates.findIndex((t) => t.id === currentDocId);
         if (idx !== -1) {
-          templates[idx] = { ...templates[idx], title: documentTitle, html, letterheadUrl, updatedAt: now };
+          templates[idx] = { ...templates[idx], title: documentTitle, html, letterheadUrl, letterheadName, updatedAt: now, clientId: selectedClientId };
         } else {
-          const newT: SavedTemplate = { id: crypto.randomUUID(), title: documentTitle, html, letterheadUrl, updatedAt: now };
+          const newT: SavedTemplate = { id: crypto.randomUUID(), title: documentTitle, html, letterheadUrl, letterheadName, updatedAt: now, clientId: selectedClientId };
           templates.unshift(newT);
           setCurrentDocId(newT.id);
         }
       } else {
-        const newT: SavedTemplate = { id: crypto.randomUUID(), title: documentTitle, html, letterheadUrl, updatedAt: now };
+        const newT: SavedTemplate = { id: crypto.randomUUID(), title: documentTitle, html, letterheadUrl, letterheadName, updatedAt: now, clientId: selectedClientId };
         templates.unshift(newT);
         setCurrentDocId(newT.id);
       }
@@ -156,10 +201,10 @@ const Index = () => {
       if (currentDocId) {
         const idx = docs.findIndex((d) => d.id === currentDocId);
         if (idx !== -1) {
-          docs[idx] = { ...docs[idx], title: documentTitle, html, letterheadUrl, updatedAt: now };
+          docs[idx] = { ...docs[idx], title: documentTitle, html, letterheadUrl, letterheadName, updatedAt: now, clientId: selectedClientId };
         }
       } else {
-        const newDoc: SavedDocument = { id: crypto.randomUUID(), title: documentTitle, html, letterheadUrl, updatedAt: now };
+        const newDoc: SavedDocument = { id: crypto.randomUUID(), title: documentTitle, html, letterheadUrl, letterheadName, updatedAt: now, clientId: selectedClientId };
         docs.unshift(newDoc);
         setCurrentDocId(newDoc.id);
       }
@@ -168,7 +213,7 @@ const Index = () => {
     }
 
     setIsDirty(false);
-  }, [letterheadUrl, documentTitle, currentDocId, savingAsTemplate]);
+  }, [letterheadUrl, letterheadName, documentTitle, currentDocId, savingAsTemplate, selectedClientId]);
 
   // Ctrl+S / Cmd+S keyboard shortcut
   useEffect(() => {
@@ -188,9 +233,11 @@ const Index = () => {
 
   const confirmClear = useCallback(() => {
     setLetterheadUrl(null);
-    setDocumentTitle(savingAsTemplate ? "Novo Template" : "Novo Documento");
+    setLetterheadName(null);
+    setDocumentTitle(savingAsTemplate ? "Novo template" : "Novo documento");
     setInitialContent("");
     setCurrentDocId(null);
+    setSelectedClientId(null);
     setIsTemplatePinned(false);
     editorRef.current?.setContent("");
     setIsDirty(false);
@@ -210,9 +257,15 @@ const Index = () => {
   }, [savingAsTemplate, currentDocId, documentTitle]);
 
   const handleDeleteDocument = useCallback(() => {
-    if (savingAsTemplate || !currentDocId) return;
+    if (savingAsTemplate) return;
+    if (!currentDocId) {
+      setIsDirty(false);
+      navigate("/?tab=documents");
+      toast.success("Documento descartado.");
+      return;
+    }
     setShowDeleteDocumentDialog(true);
-  }, [savingAsTemplate, currentDocId]);
+  }, [savingAsTemplate, currentDocId, navigate]);
 
   const confirmDeleteDocument = useCallback(() => {
     if (!currentDocId) return;
@@ -225,9 +278,15 @@ const Index = () => {
   }, [currentDocId, navigate]);
 
   const handleDeleteTemplate = useCallback(() => {
-    if (!savingAsTemplate || !currentDocId) return;
+    if (!savingAsTemplate) return;
+    if (!currentDocId) {
+      setIsDirty(false);
+      navigate("/?tab=templates");
+      toast.success("Template descartado.");
+      return;
+    }
     setShowDeleteDialog(true);
-  }, [savingAsTemplate, currentDocId]);
+  }, [savingAsTemplate, currentDocId, navigate]);
 
   const confirmDeleteTemplate = useCallback(() => {
     if (!savingAsTemplate || !currentDocId) return;
@@ -249,6 +308,11 @@ const Index = () => {
 
   const handleDocumentTitleChange = useCallback((title: string) => {
     setDocumentTitle(title);
+    setIsDirty(true);
+  }, []);
+
+  const handleTemplateClientChange = useCallback((clientId: string | null) => {
+    setSelectedClientId(clientId);
     setIsDirty(true);
   }, []);
 
@@ -304,17 +368,18 @@ const Index = () => {
       {/* Mobile variables drawer */}
       {isMobile && showMobileVars && (
         <div className="border-b border-border bg-card max-h-48 overflow-y-auto">
-          <VariablesSidebar />
+          <VariablesSidebar variableValues={selectedClientValues} />
         </div>
       )}
 
       <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
-        {!isMobile && <VariablesSidebar />}
+        {!isMobile && <VariablesSidebar variableValues={selectedClientValues} />}
         <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
           <DocumentEditor
             ref={editorRef}
             letterheadUrl={letterheadUrl}
             initialContent={initialContent}
+            variableValues={selectedClientValues}
             onContentChange={handleContentChange}
           />
         </div>
@@ -330,15 +395,19 @@ const Index = () => {
                 onDeleteTemplate={handleDeleteTemplate}
                 onDeleteDocument={handleDeleteDocument}
                 letterheadUrl={letterheadUrl}
-                onLetterheadUpload={(url) => { setLetterheadUrl(url); setIsDirty(true); }}
-                onLetterheadRemove={() => { setLetterheadUrl(null); setIsDirty(true); }}
+                letterheadName={letterheadName}
+                onLetterheadUpload={(url, fileName) => { setLetterheadUrl(url); setLetterheadName(fileName); setIsDirty(true); }}
+                onLetterheadRemove={() => { setLetterheadUrl(null); setLetterheadName(null); setIsDirty(true); }}
                 documentTitle={documentTitle}
                 onDocumentTitleChange={handleDocumentTitleChange}
                 isExporting={isExporting}
                 isTemplateMode={savingAsTemplate}
                 isTemplatePinned={isTemplatePinned}
-                canManageTemplate={Boolean(currentDocId)}
-                canDeleteDocument={Boolean(currentDocId) && !savingAsTemplate}
+                canManageTemplate={savingAsTemplate}
+                canDeleteDocument={!savingAsTemplate}
+                clients={clients}
+                selectedClientId={selectedClientId}
+                onTemplateClientChange={handleTemplateClientChange}
               />
             </div>
           )
@@ -348,7 +417,7 @@ const Index = () => {
               "overflow-hidden shrink-0",
               "transition-[width,opacity] duration-[220ms]",
               "[transition-timing-function:cubic-bezier(0.25,1,0.5,1)]",
-              showSettings ? "w-64 opacity-100" : "w-0 opacity-0"
+              showSettings ? "w-72 opacity-100" : "w-0 opacity-0"
             )}
           >
             <SettingsSidebar
@@ -359,15 +428,19 @@ const Index = () => {
               onDeleteTemplate={handleDeleteTemplate}
               onDeleteDocument={handleDeleteDocument}
               letterheadUrl={letterheadUrl}
-              onLetterheadUpload={(url) => { setLetterheadUrl(url); setIsDirty(true); }}
-              onLetterheadRemove={() => { setLetterheadUrl(null); setIsDirty(true); }}
+              letterheadName={letterheadName}
+              onLetterheadUpload={(url, fileName) => { setLetterheadUrl(url); setLetterheadName(fileName); setIsDirty(true); }}
+              onLetterheadRemove={() => { setLetterheadUrl(null); setLetterheadName(null); setIsDirty(true); }}
               documentTitle={documentTitle}
               onDocumentTitleChange={handleDocumentTitleChange}
               isExporting={isExporting}
               isTemplateMode={savingAsTemplate}
               isTemplatePinned={isTemplatePinned}
-              canManageTemplate={Boolean(currentDocId)}
-              canDeleteDocument={Boolean(currentDocId) && !savingAsTemplate}
+              canManageTemplate={savingAsTemplate}
+              canDeleteDocument={!savingAsTemplate}
+              clients={clients}
+              selectedClientId={selectedClientId}
+              onTemplateClientChange={handleTemplateClientChange}
             />
           </div>
         )}

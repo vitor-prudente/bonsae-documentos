@@ -28,6 +28,7 @@ export function VariableNodeView({ node, editor, getPos }: NodeViewProps) {
 
   const iconName = variableIconMap[node.attrs.key] || "user";
   const IconComponent = iconComponents[iconName] || User;
+  const displayValue = node.attrs.resolvedValue || node.attrs.label || node.attrs.key;
 
   useEffect(() => {
     if (editing && inputRef.current) {
@@ -74,7 +75,7 @@ export function VariableNodeView({ node, editor, getPos }: NodeViewProps) {
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={handleKeyDown}
             onBlur={handleConfirm}
-            placeholder={node.attrs.label || node.attrs.key}
+            placeholder={displayValue}
             className="variable-inline-input"
           />
         </span>
@@ -87,10 +88,10 @@ export function VariableNodeView({ node, editor, getPos }: NodeViewProps) {
       <span
         className="variable-badge variable-badge-clickable"
         onClick={() => setEditing(true)}
-        title="Clique para preencher"
+        title={node.attrs.resolvedValue ? node.attrs.label || node.attrs.key : "Clique para preencher"}
       >
         <IconComponent className="variable-badge-icon" />
-        {node.attrs.label || node.attrs.key}
+        {displayValue}
       </span>
     </NodeViewWrapper>
   );
