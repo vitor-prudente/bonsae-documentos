@@ -1,4 +1,11 @@
-const CLIENT_LIST_KEY = "bonsae-client-list";
+import {
+  createCliente,
+  deleteCliente,
+  getClientes,
+  updateCliente,
+  type BackendCliente,
+  type ClientePayload,
+} from "@/lib/api";
 
 export interface SavedClient {
   id: string;
@@ -7,70 +14,70 @@ export interface SavedClient {
   updatedAt: string;
 }
 
-const mockClients: SavedClient[] = [
-  {
-    id: "client-ana-souza",
-    name: "Ana Souza",
-    updatedAt: "2026-04-27T09:00:00.000Z",
-    values: {
-      nome_cliente: "Ana Souza",
-      cpf_cnpj: "123.456.789-00",
-      endereco: "Rua das Palmeiras, 120, Maceió/AL",
-      valor_causa: "R$ 25.000,00",
-      data_atual: "27/04/2026",
-      numero_processo: "0801234-56.2026.8.02.0001",
-      nome_advogado: "Vitor Prudente",
-      oab: "OAB/AL 12.345",
-      comarca: "Maceió",
-      vara: "3ª Vara Cível",
-    },
-  },
-  {
-    id: "client-bruno-lima",
-    name: "Bruno Lima ME",
-    updatedAt: "2026-04-27T09:00:00.000Z",
-    values: {
-      nome_cliente: "Bruno Lima ME",
-      cpf_cnpj: "12.345.678/0001-90",
-      endereco: "Av. Fernandes Lima, 850, Maceió/AL",
-      valor_causa: "R$ 48.500,00",
-      data_atual: "27/04/2026",
-      nome_advogado: "Vitor Prudente",
-      oab: "OAB/AL 12.345",
-      comarca: "Maceió",
-    },
-  },
-  {
-    id: "client-carolina-melo",
-    name: "Carolina Melo",
-    updatedAt: "2026-04-27T09:00:00.000Z",
-    values: {
-      nome_cliente: "Carolina Melo",
-      cpf_cnpj: "987.654.321-00",
-      endereco: "Rua São Pedro, 44, Arapiraca/AL",
-      data_atual: "27/04/2026",
-      nome_advogado: "Vitor Prudente",
-      oab: "OAB/AL 12.345",
-      comarca: "Arapiraca",
-      vara: "1ª Vara Cível",
-    },
-  },
+export const CLIENT_VARIABLES = [
+  { id: "nome_cliente", key: "nome_cliente", label: "Nome do Cliente", icon: "user" },
+  { id: "cpf_cnpj", key: "cpf_cnpj", label: "CPF", icon: "id-card" },
+  { id: "email", key: "email", label: "E-mail", icon: "mail" },
+  { id: "telefone", key: "telefone", label: "Telefone", icon: "phone" },
+  { id: "endereco", key: "endereco", label: "Endereco", icon: "map-pin" },
+  { id: "cidade", key: "cidade", label: "Cidade", icon: "building" },
+  { id: "estado", key: "estado", label: "Estado", icon: "map-pin" },
+  { id: "cep", key: "cep", label: "CEP", icon: "map-pin" },
 ];
 
-export function getClientList(): SavedClient[] {
-  try {
-    const raw = localStorage.getItem(CLIENT_LIST_KEY);
-    if (!raw) {
-      localStorage.setItem(CLIENT_LIST_KEY, JSON.stringify(mockClients));
-      return mockClients;
-    }
-    const clients = JSON.parse(raw);
-    return Array.isArray(clients) ? clients : [];
-  } catch {
-    return [];
-  }
+const nullable = (value: string | undefined) => {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+};
+
+export function mapBackendCliente(cliente: BackendCliente): SavedClient {
+  const name = cliente.nome || `Cliente ${cliente.id}`;
+
+  return {
+    id: String(cliente.id),
+    name,
+    updatedAt: cliente.updated_at || cliente.created_at || new Date().toISOString(),
+    values: {
+      nome_cliente: cliente.nome || "",
+      cpf_cnpj: cliente.cpf || "",
+      email: cliente.email || "",
+      telefone: cliente.telefone || "",
+      endereco: cliente.endereco || "",
+      cidade: cliente.cidade || "",
+      estado: cliente.estado || "",
+      cep: cliente.cep || "",
+    },
+  };
 }
 
-export function saveClientList(clients: SavedClient[]) {
-  localStorage.setItem(CLIENT_LIST_KEY, JSON.stringify(clients));
+export function mapSavedClientPayload(client: Pick<SavedClient, "name" | "values">): ClientePayload {
+  return {
+    nome: nullable(client.values.nome_cliente) || client.name.trim() || "Cliente sem nome",
+    cpf: nullable(client.values.cpf_cnpj),
+    email: nullable(client.values.email),
+    telefone: nullable(client.values.telefone),
+    endereco: nullable(client.values.endereco),
+    cidade: nullable(client.values.cidade),
+    estado: nullable(client.values.estado),
+    cep: nullable(client.values.cep),
+  };
+}
+
+export async function getClientList(): Promise<SavedClient[]> {
+  const clientes = await getClientes();
+  return clientes.map(mapBackendCliente);
+}
+
+export async function createClient(client: Pick<SavedClient, "name" | "values">) {
+  const created = await createCliente(mapSavedClientPayload(client));
+  return mapBackendCliente(created);
+}
+
+export async function updateClient(client: SavedClient) {
+  const updated = await updateCliente(client.id, mapSavedClientPayload(client));
+  return mapBackendCliente(updated);
+}
+
+export async function deleteClient(id: string) {
+  await deleteCliente(id);
 }

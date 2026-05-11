@@ -2,8 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
 import { variableIconMap } from "./variableIcons";
 import {
-  User, CreditCard, MapPin, DollarSign, Calendar,
-  FileText, Briefcase, BadgeCheck, Building, Gavel,
+  User, CreditCard, MapPin, Mail, Phone, Building,
   type LucideIcon,
 } from "lucide-react";
 
@@ -11,13 +10,9 @@ const iconComponents: Record<string, LucideIcon> = {
   user: User,
   "id-card": CreditCard,
   "map-pin": MapPin,
-  "dollar-sign": DollarSign,
-  calendar: Calendar,
-  "file-text": FileText,
-  briefcase: Briefcase,
-  "badge-check": BadgeCheck,
+  mail: Mail,
+  phone: Phone,
   building: Building,
-  gavel: Gavel,
 };
 
 export function VariableNodeView({ node, editor, getPos }: NodeViewProps) {

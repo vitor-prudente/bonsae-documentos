@@ -23,6 +23,12 @@ export interface DocumentEditorRef {
   getEditorElement: () => HTMLElement | null;
 }
 
+interface VariableInsertDetail {
+  key: string;
+  label: string;
+  value?: string | null;
+}
+
 export const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>(
   ({ letterheadUrl, onContentChange, initialContent, variableValues = {} }, ref) => {
     const getResolvedValue = useCallback(
@@ -54,7 +60,7 @@ export const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>
       ref,
       () => ({
         getHTML: () => editor?.getHTML() || "",
-        setContent: (html: string) => editor?.commands.setContent(html, false),
+        setContent: (html: string) => editor?.commands.setContent(html, { emitUpdate: false }),
         getEditorElement: () => document.getElementById("editor-print-area"),
       }),
       [editor]
@@ -93,24 +99,43 @@ export const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>
       }
     }, [editor, getResolvedValue]);
 
+    const insertVariableOrText = useCallback(
+      ({ key, label, value }: VariableInsertDetail) => {
+        if (!editor || !key) return;
+
+        const resolvedValue = value?.trim() || getResolvedValue(key);
+        const chain = editor.chain().focus();
+
+        if (resolvedValue) {
+          chain
+            .insertContent([
+              { type: "text", text: resolvedValue },
+              { type: "text", text: " " },
+            ])
+            .run();
+          return;
+        }
+
+        chain
+          .insertContent({
+            type: "variable",
+            attrs: { key, label: label || key, resolvedValue: null },
+          })
+          .insertContent(" ")
+          .run();
+      },
+      [editor, getResolvedValue]
+    );
+
     const handleDrop = useCallback(
       (e: React.DragEvent) => {
         e.preventDefault();
-        const variable = e.dataTransfer.getData("application/x-variable");
+        const key = e.dataTransfer.getData("application/x-variable");
         const label = e.dataTransfer.getData("application/x-variable-label");
-        if (variable && editor) {
-          editor
-            .chain()
-            .focus()
-            .insertContent({
-              type: "variable",
-              attrs: { key: variable, label: label || variable, resolvedValue: getResolvedValue(variable) },
-            })
-            .insertContent(" ")
-            .run();
-        }
+        const value = e.dataTransfer.getData("application/x-variable-value");
+        insertVariableOrText({ key, label, value });
       },
-      [editor, getResolvedValue]
+      [insertVariableOrText]
     );
 
     const handleDragOver = (e: React.DragEvent) => {
@@ -122,26 +147,14 @@ export const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>
 
     useEffect(() => {
       const handleInsertVariable = (event: Event) => {
-        const customEvent = event as CustomEvent<{ key: string; label: string }>;
+        const customEvent = event as CustomEvent<VariableInsertDetail>;
         if (!editor || !customEvent.detail?.key) return;
-        editor
-          .chain()
-          .focus()
-          .insertContent({
-            type: "variable",
-            attrs: {
-              key: customEvent.detail.key,
-              label: customEvent.detail.label || customEvent.detail.key,
-              resolvedValue: getResolvedValue(customEvent.detail.key),
-            },
-          })
-          .insertContent(" ")
-          .run();
+        insertVariableOrText(customEvent.detail);
       };
 
       window.addEventListener("insert-variable", handleInsertVariable);
       return () => window.removeEventListener("insert-variable", handleInsertVariable);
-    }, [editor, getResolvedValue]);
+    }, [editor, insertVariableOrText]);
 
     return (
       <div className="flex-1 min-h-0 flex flex-col min-w-0">

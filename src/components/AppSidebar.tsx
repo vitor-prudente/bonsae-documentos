@@ -10,18 +10,13 @@ import {
   Pin,
   ChevronRight,
   PanelLeftClose,
+  LogOut,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import logoImg from "@/assets/logo-bonsae.png";
+import { getStoredUser, logout, type BackendUser } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { getClientList, type SavedClient } from "@/lib/clients";
 
 export interface PinnedTemplate {
   id: string;
@@ -75,7 +70,6 @@ function NavItem({ icon, label, active, to, badge, collapsed }: NavItemProps) {
           : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
       )}
     >
-      {/* Pill indicator on active item */}
       {active && !collapsed && (
         <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-primary animate-fade-in" />
       )}
@@ -99,12 +93,10 @@ export function AppSidebar({ isOpen, onToggle }: AppSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [pinned, setPinned] = useState<PinnedTemplate[]>([]);
-  const [clients, setClients] = useState<SavedClient[]>([]);
-  const [showClientPicker, setShowClientPicker] = useState(false);
+  const [user, setUser] = useState<BackendUser | null>(getStoredUser());
 
   useEffect(() => {
     setPinned(getPinnedTemplates());
-    setClients(getClientList());
 
     const handleStorage = () => setPinned(getPinnedTemplates());
     window.addEventListener("storage", handleStorage);
@@ -115,32 +107,43 @@ export function AppSidebar({ isOpen, onToggle }: AppSidebarProps) {
     };
   }, []);
 
+  useEffect(() => {
+    const syncUser = () => setUser(getStoredUser());
+    window.addEventListener("bonsae-auth-changed", syncUser);
+    window.addEventListener("storage", syncUser);
+
+    return () => {
+      window.removeEventListener("bonsae-auth-changed", syncUser);
+      window.removeEventListener("storage", syncUser);
+    };
+  }, []);
+
   const isHome =
     location.pathname === "/" &&
-    (!location.search || (!location.search.includes("tab=documents") &&
-      !location.search.includes("tab=templates") &&
-      !location.search.includes("tab=variables") &&
-      !location.search.includes("tab=clients")));
+    (!location.search ||
+      (!location.search.includes("tab=documents") &&
+        !location.search.includes("tab=templates") &&
+        !location.search.includes("tab=variables") &&
+        !location.search.includes("tab=clients")));
   const isDocuments = location.search.includes("tab=documents");
-  const isTemplates =
-    location.search.includes("tab=templates");
+  const isTemplates = location.search.includes("tab=templates");
   const isVariables = location.search.includes("tab=variables");
   const isClients = location.search.includes("tab=clients");
   const isExplicitHome = location.search.includes("tab=home");
 
-  const handleOpenTemplatePicker = () => {
-    setClients(getClientList());
-    setShowClientPicker(true);
-  };
-
-  const handleCreateTemplateForClient = (client: SavedClient) => {
-    setShowClientPicker(false);
-    navigate(`/editor?type=template&clientId=${client.id}&draftId=${crypto.randomUUID()}`);
-  };
-
-  const handleCreateTemplateWithoutClient = () => {
-    setShowClientPicker(false);
+  const handleCreateTemplate = () => {
     navigate(`/editor?type=template&draftId=${crypto.randomUUID()}`);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast.success("Sessao encerrada.");
+      navigate("/login", { replace: true });
+    } catch {
+      toast.success("Sessao encerrada.");
+      navigate("/login", { replace: true });
+    }
   };
 
   return (
@@ -151,14 +154,9 @@ export function AppSidebar({ isOpen, onToggle }: AppSidebarProps) {
         isOpen ? "w-[260px]" : "w-0"
       )}
     >
-      {/* Logo */}
       <div className="px-4 py-5 flex items-center gap-2">
         <Link to="/">
-          <img
-            src={logoImg}
-            alt="Bonsae"
-            className="h-7 cursor-pointer object-contain"
-          />
+          <img src={logoImg} alt="Bonsae" className="h-7 cursor-pointer object-contain" />
         </Link>
         <button
           onClick={onToggle}
@@ -170,52 +168,24 @@ export function AppSidebar({ isOpen, onToggle }: AppSidebarProps) {
         </button>
       </div>
 
-      {/* Create button */}
       <div className="px-3 mb-2">
-        <Button onClick={handleOpenTemplatePicker} className="w-full gap-2 justify-start" size="default">
+        <Button onClick={handleCreateTemplate} className="w-full gap-2 justify-start" size="default">
           <Plus className="h-4 w-4" />
           Criar Template
         </Button>
       </div>
 
-      {/* Main nav */}
       <nav className="px-3 space-y-0.5 mt-2">
         <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold px-3 mb-2">
           Geral
         </p>
-        <NavItem
-          icon={<Home className="h-4 w-4" />}
-          label="Home"
-          active={isHome || isExplicitHome}
-          to="/"
-        />
-        <NavItem
-          icon={<LayoutTemplate className="h-4 w-4" />}
-          label="Templates"
-          active={isTemplates}
-          to="/?tab=templates"
-        />
-        <NavItem
-          icon={<FileText className="h-4 w-4" />}
-          label="Documentos"
-          active={isDocuments}
-          to="/?tab=documents"
-        />
-        <NavItem
-          icon={<Users className="h-4 w-4" />}
-          label="Clientes"
-          active={isClients}
-          to="/?tab=clients"
-        />
-        <NavItem
-          icon={<Braces className="h-4 w-4" />}
-          label="Variáveis"
-          active={isVariables}
-          to="/?tab=variables"
-        />
+        <NavItem icon={<Home className="h-4 w-4" />} label="Home" active={isHome || isExplicitHome} to="/" />
+        <NavItem icon={<LayoutTemplate className="h-4 w-4" />} label="Templates" active={isTemplates} to="/?tab=templates" />
+        <NavItem icon={<FileText className="h-4 w-4" />} label="Documentos" active={isDocuments} to="/?tab=documents" />
+        <NavItem icon={<Users className="h-4 w-4" />} label="Clientes" active={isClients} to="/?tab=clients" />
+        <NavItem icon={<Braces className="h-4 w-4" />} label="Variaveis" active={isVariables} to="/?tab=variables" />
       </nav>
 
-      {/* Pinned templates */}
       <div className="px-3 mt-6 flex-1 overflow-y-auto">
         <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold px-3 mb-2 flex items-center gap-1.5">
           <Pin className="h-3 w-3" />
@@ -230,7 +200,7 @@ export function AppSidebar({ isOpen, onToggle }: AppSidebarProps) {
             {pinned.map((t) => (
               <Link
                 key={t.id}
-                to={`/editor?id=${t.id}`}
+                to={`/editor?id=${t.id}&type=template`}
                 className="group w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors"
               >
                 <LayoutTemplate className="h-3.5 w-3.5 shrink-0" />
@@ -242,45 +212,18 @@ export function AppSidebar({ isOpen, onToggle }: AppSidebarProps) {
         )}
       </div>
 
-      <Dialog open={showClientPicker} onOpenChange={setShowClientPicker}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Escolha o cliente</DialogTitle>
-            <DialogDescription>
-              O template será criado exibindo as variáveis reais do cliente selecionado.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 max-h-[360px] overflow-y-auto">
-            <button
-              onClick={handleCreateTemplateWithoutClient}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-border hover:border-primary/40 hover:bg-accent/50 transition-all text-left"
-            >
-              <Braces className="h-5 w-5 text-primary shrink-0" />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-foreground truncate">Sem cliente</p>
-                <p className="text-xs text-muted-foreground">
-                  Usar variáveis sem dados preenchidos
-                </p>
-              </div>
-            </button>
-            {clients.map((client) => (
-              <button
-                key={client.id}
-                onClick={() => handleCreateTemplateForClient(client)}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-border hover:border-primary/40 hover:bg-accent/50 transition-all text-left"
-              >
-                <Users className="h-5 w-5 text-primary shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-foreground truncate">{client.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {client.values.nome_cliente || "Cliente sem nome preenchido"}
-                  </p>
-                </div>
-              </button>
-            ))}
+      <div className="border-t border-border p-3">
+        {user && (
+          <div className="px-3 py-2 mb-2 rounded-lg bg-muted/40 min-w-0">
+            <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
+            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
           </div>
-        </DialogContent>
-      </Dialog>
+        )}
+        <Button onClick={handleLogout} variant="outline" size="sm" className="w-full gap-2 justify-start">
+          <LogOut className="h-4 w-4" />
+          Sair
+        </Button>
+      </div>
     </aside>
   );
 }

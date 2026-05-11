@@ -9,85 +9,50 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Plus, FileText, Trash2, Search, Pin, PinOff, Variable, LayoutTemplate, ArrowRight, Users, UserRound, Save, Braces } from "lucide-react";
 import { toast } from "sonner";
 import bonsaiImg from "@/assets/bonsai-empty.png";
 import { getPinnedTemplates, togglePinTemplate, type PinnedTemplate } from "@/components/AppSidebar";
 import { getDocumentPreviewText } from "@/lib/documentPreview";
-import { getClientList, saveClientList, type SavedClient } from "@/lib/clients";
-import { getDraftTitleBase, makeUniqueTitle } from "@/lib/titles";
+import { getApiErrorMessage } from "@/lib/api";
+import {
+  createDocumentFromTemplate,
+  deleteSavedDocument,
+  getDocumentList,
+  type SavedDocument,
+} from "@/lib/documents";
+import {
+  CLIENT_VARIABLES,
+  createClient,
+  deleteClient,
+  getClientList,
+  updateClient,
+  type SavedClient,
+} from "@/lib/clients";
+import {
+  deleteSavedTemplate,
+  getTemplateList,
+  type SavedTemplate,
+} from "@/lib/templates";
+import { makeUniqueTitle } from "@/lib/titles";
 
-const STORAGE_LIST_KEY = "legal-doc-list";
-const TEMPLATE_LIST_KEY = "bonsae-template-list";
 const VARIABLE_LIST_KEY = "bonsae-variable-list";
-
-export interface SavedDocument {
-  id: string;
-  title: string;
-  html: string;
-  letterheadUrl: string | null;
-  letterheadName?: string | null;
-  updatedAt: string;
-  clientId?: string | null;
-}
-
-export interface SavedTemplate {
-  id: string;
-  title: string;
-  html: string;
-  letterheadUrl: string | null;
-  letterheadName?: string | null;
-  updatedAt: string;
-  clientId?: string | null;
-}
 
 export interface CustomVariable {
   id: string;
   key: string;
   label: string;
   icon: string;
-}
-
-export function getDocumentList(): SavedDocument[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_LIST_KEY);
-    if (!raw) {
-      const oldDoc = localStorage.getItem("legal-doc-editor");
-      if (oldDoc) {
-        const data = JSON.parse(oldDoc);
-        const doc: SavedDocument = {
-          id: crypto.randomUUID(),
-          title: data.documentTitle || "Documento sem título",
-          html: data.html || "",
-          letterheadUrl: data.letterheadUrl || null,
-          updatedAt: new Date().toISOString(),
-        };
-        localStorage.setItem(STORAGE_LIST_KEY, JSON.stringify([doc]));
-        localStorage.removeItem("legal-doc-editor");
-        return [doc];
-      }
-      return [];
-    }
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-
-export function saveDocumentList(docs: SavedDocument[]) {
-  localStorage.setItem(STORAGE_LIST_KEY, JSON.stringify(docs));
-}
-
-export function getTemplateList(): SavedTemplate[] {
-  try {
-    return JSON.parse(localStorage.getItem(TEMPLATE_LIST_KEY) || "[]");
-  } catch {
-    return [];
-  }
-}
-
-export function saveTemplateList(templates: SavedTemplate[]) {
-  localStorage.setItem(TEMPLATE_LIST_KEY, JSON.stringify(templates));
 }
 
 export function getCustomVariables(): CustomVariable[] {
@@ -102,41 +67,11 @@ export function saveCustomVariables(vars: CustomVariable[]) {
   localStorage.setItem(VARIABLE_LIST_KEY, JSON.stringify(vars));
 }
 
-// Default variables
-const defaultVariables: CustomVariable[] = [
-  { id: "1", key: "nome_cliente", label: "Nome do Cliente", icon: "user" },
-  { id: "2", key: "cpf_cnpj", label: "CPF/CNPJ", icon: "id-card" },
-  { id: "3", key: "endereco", label: "Endereço", icon: "map-pin" },
-  { id: "4", key: "valor_causa", label: "Valor da Causa", icon: "dollar-sign" },
-  { id: "5", key: "data_atual", label: "Data Atual", icon: "calendar" },
-  { id: "6", key: "numero_processo", label: "Nº do Processo", icon: "file-text" },
-  { id: "7", key: "nome_advogado", label: "Nome do Advogado", icon: "briefcase" },
-  { id: "8", key: "oab", label: "Número OAB", icon: "badge-check" },
-  { id: "9", key: "comarca", label: "Comarca", icon: "building" },
-  { id: "10", key: "vara", label: "Vara", icon: "gavel" },
-];
+const defaultVariables: CustomVariable[] = CLIENT_VARIABLES.map((variable) => ({ ...variable }));
 
 export function getAvailableVariables(): CustomVariable[] {
-  const custom = getCustomVariables();
-  if (custom.length > 0) return custom;
   saveCustomVariables(defaultVariables);
   return defaultVariables;
-}
-
-export function applyClientValuesToTemplateHtml(html: string, values: Record<string, string>) {
-  if (!html || typeof document === "undefined") return html;
-
-  const template = document.createElement("template");
-  template.innerHTML = html;
-  template.content.querySelectorAll<HTMLElement>("span[data-variable]").forEach((node) => {
-    const key = node.dataset.variable;
-    const value = key ? values[key]?.trim() : "";
-    if (value) {
-      node.replaceWith(document.createTextNode(value));
-    }
-  });
-
-  return template.innerHTML;
 }
 
 const formatDate = (dateStr: string) => {
@@ -160,62 +95,86 @@ function DocumentsTab() {
   const [clients, setClients] = useState<SavedClient[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
-  const [showTemplateClientPicker, setShowTemplateClientPicker] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<SavedTemplate | null>(null);
+  const [showDocumentClientPicker, setShowDocumentClientPicker] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCreatingDocument, setIsCreatingDocument] = useState(false);
 
   useEffect(() => {
-    setDocuments(getDocumentList());
-    setTemplates(getTemplateList());
-    setClients(getClientList());
+    let ignore = false;
+    async function loadRemoteData() {
+      try {
+        const [loadedDocuments, loadedTemplates, loadedClients] = await Promise.all([
+          getDocumentList(),
+          getTemplateList(),
+          getClientList(),
+        ]);
+        if (!ignore) {
+          setDocuments(loadedDocuments);
+          setTemplates(loadedTemplates);
+          setClients(loadedClients);
+        }
+      } catch (error) {
+        toast.error(getApiErrorMessage(error));
+      } finally {
+        if (!ignore) setIsLoading(false);
+      }
+    }
+
+    void loadRemoteData();
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   const filteredDocs = documents.filter((doc) =>
     doc.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleDelete = (e: React.MouseEvent, docId: string) => {
+  const handleDelete = async (e: React.MouseEvent, docId: string) => {
     e.stopPropagation();
-    const updated = documents.filter((d) => d.id !== docId);
-    saveDocumentList(updated);
-    setDocuments(updated);
-    toast.success("Documento excluído.");
+    try {
+      await deleteSavedDocument(docId);
+      setDocuments((current) => current.filter((document) => document.id !== docId));
+      toast.success("Documento excluído.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
   };
 
-  const handleNewFromTemplate = (t: SavedTemplate) => {
-    const client = clients.find((c) => c.id === t.clientId);
-    const hydratedHtml = client
-      ? applyClientValuesToTemplateHtml(t.html, client.values)
-      : t.html;
-    const docs = getDocumentList();
-    const titleBase = getDraftTitleBase("document", client?.name);
-    const newDoc: SavedDocument = {
-      id: crypto.randomUUID(),
-      title: makeUniqueTitle(titleBase, docs.map((doc) => doc.title)),
-      html: hydratedHtml,
-      letterheadUrl: t.letterheadUrl,
-      letterheadName: t.letterheadName || null,
-      updatedAt: new Date().toISOString(),
-      clientId: client?.id || null,
-    };
-    docs.unshift(newDoc);
-    saveDocumentList(docs);
-    navigate(`/editor?id=${newDoc.id}`);
-    toast.success("Documento criado a partir do template.");
-  };
-
-  const handleOpenTemplateClientPicker = () => {
+  const handleCreateTemplate = () => {
     setShowTemplatePicker(false);
-    setClients(getClientList());
-    setShowTemplateClientPicker(true);
-  };
-
-  const handleCreateTemplateForClient = (client: SavedClient) => {
-    setShowTemplateClientPicker(false);
-    navigate(`/editor?type=template&clientId=${client.id}&draftId=${crypto.randomUUID()}`);
-  };
-
-  const handleCreateTemplateWithoutClient = () => {
-    setShowTemplateClientPicker(false);
     navigate(`/editor?type=template&draftId=${crypto.randomUUID()}`);
+  };
+
+  const handleOpenClientPicker = (template: SavedTemplate) => {
+    setSelectedTemplate(template);
+    setShowTemplatePicker(false);
+    setShowDocumentClientPicker(true);
+  };
+
+  const handleNewFromTemplate = async (template: SavedTemplate, client: SavedClient | null) => {
+    if (isCreatingDocument) return;
+    setIsCreatingDocument(true);
+    try {
+      const newDoc = await createDocumentFromTemplate(
+        template,
+        client,
+        documents.map((doc) => doc.title)
+      );
+      setDocuments((current) => [
+        newDoc,
+        ...current.filter((document) => document.id !== newDoc.id),
+      ]);
+      setShowDocumentClientPicker(false);
+      setSelectedTemplate(null);
+      navigate(`/editor?id=${newDoc.id}`);
+      toast.success("Documento criado a partir do template.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setIsCreatingDocument(false);
+    }
   };
 
   return (
@@ -231,7 +190,12 @@ function DocumentsTab() {
             className="pl-9"
           />
         </div>
-        <Button onClick={() => setShowTemplatePicker(true)} size="sm" className="gap-2">
+        <Button
+          onClick={() => setShowTemplatePicker(true)}
+          size="sm"
+          className="gap-2"
+          disabled={isLoading || isCreatingDocument}
+        >
           <Plus className="h-4 w-4" />
           Novo Documento
         </Button>
@@ -247,7 +211,7 @@ function DocumentsTab() {
               <div className="text-center py-8">
                 <LayoutTemplate className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
                 <p className="text-sm text-muted-foreground">Nenhum template disponível.</p>
-                <Button onClick={handleOpenTemplateClientPicker} variant="outline" size="sm" className="mt-3 gap-2">
+                <Button onClick={handleCreateTemplate} variant="outline" size="sm" className="mt-3 gap-2">
                   <Plus className="h-4 w-4" />
                   Criar Template
                 </Button>
@@ -257,14 +221,15 @@ function DocumentsTab() {
                 {templates.map((t) => (
                   <button
                     key={t.id}
-                    onClick={() => handleNewFromTemplate(t)}
+                    onClick={() => handleOpenClientPicker(t)}
+                    disabled={isCreatingDocument}
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-border hover:border-primary/40 hover:bg-accent/50 transition-all text-left"
                   >
                     <LayoutTemplate className="h-5 w-5 text-primary shrink-0" />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-foreground truncate">{t.title}</p>
                       <p className="text-xs text-muted-foreground">
-                        {clients.find((c) => c.id === t.clientId)?.name || "Sem cliente associado"} · {formatDate(t.updatedAt)}
+                        Atualizado em {formatDate(t.updatedAt)}
                       </p>
                     </div>
                   </button>
@@ -274,31 +239,32 @@ function DocumentsTab() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showTemplateClientPicker} onOpenChange={setShowTemplateClientPicker}>
+      <Dialog open={showDocumentClientPicker} onOpenChange={setShowDocumentClientPicker}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Escolha o cliente</DialogTitle>
             <DialogDescription>
-              O template será criado exibindo as variáveis reais do cliente selecionado.
+              O documento sera criado com as variaveis do cliente selecionado.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 max-h-[360px] overflow-y-auto">
             <button
-              onClick={handleCreateTemplateWithoutClient}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-border hover:border-primary/40 hover:bg-accent/50 transition-all text-left"
+              disabled
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-dashed border-border bg-muted/30 text-left opacity-70"
             >
               <Braces className="h-5 w-5 text-primary shrink-0" />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-foreground truncate">Sem cliente</p>
                 <p className="text-xs text-muted-foreground">
-                  Usar variáveis sem dados preenchidos
+                  O back-end exige cliente para salvar documentos
                 </p>
               </div>
             </button>
             {clients.map((client) => (
               <button
                 key={client.id}
-                onClick={() => handleCreateTemplateForClient(client)}
+                onClick={() => selectedTemplate && handleNewFromTemplate(selectedTemplate, client)}
+                disabled={isCreatingDocument}
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-border hover:border-primary/40 hover:bg-accent/50 transition-all text-left"
               >
                 <Users className="h-5 w-5 text-primary shrink-0" />
@@ -314,7 +280,11 @@ function DocumentsTab() {
         </DialogContent>
       </Dialog>
 
-      {filteredDocs.length === 0 ? (
+      {isLoading ? (
+        <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+          Carregando documentos...
+        </div>
+      ) : filteredDocs.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
           <img src={bonsaiImg} alt="Bonsai" className="h-60 mb-6 mix-blend-multiply animate-float" />
           <p className="text-lg font-medium">Nenhum documento encontrado</p>
@@ -375,8 +345,26 @@ function HomeTab() {
   const [templates, setTemplates] = useState<SavedTemplate[]>([]);
 
   useEffect(() => {
-    setDocuments(getDocumentList());
-    setTemplates(getTemplateList());
+    let ignore = false;
+    async function loadFiles() {
+      try {
+        const [loadedDocuments, loadedTemplates] = await Promise.all([
+          getDocumentList(),
+          getTemplateList(),
+        ]);
+        if (!ignore) {
+          setDocuments(loadedDocuments);
+          setTemplates(loadedTemplates);
+        }
+      } catch (error) {
+        toast.error(getApiErrorMessage(error));
+      }
+    }
+
+    void loadFiles();
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   const recentDocuments = [...documents]
@@ -511,27 +499,48 @@ function HomeTab() {
 function TemplatesTab() {
   const navigate = useNavigate();
   const [templates, setTemplates] = useState<SavedTemplate[]>([]);
-  const [clients, setClients] = useState<SavedClient[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [pinned, setPinned] = useState<PinnedTemplate[]>([]);
-  const [showClientPicker, setShowClientPicker] = useState(false);
 
   useEffect(() => {
-    setTemplates(getTemplateList());
-    setClients(getClientList());
     setPinned(getPinnedTemplates());
+
+    let ignore = false;
+    async function loadTemplates() {
+      try {
+        const loadedTemplates = await getTemplateList();
+        if (!ignore) setTemplates(loadedTemplates);
+      } catch (error) {
+        toast.error(getApiErrorMessage(error));
+      }
+    }
+
+    void loadTemplates();
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   const filteredTemplates = templates.filter((t) =>
     t.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleDelete = (e: React.MouseEvent, id: string) => {
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    const updated = templates.filter((t) => t.id !== id);
-    saveTemplateList(updated);
-    setTemplates(updated);
-    toast.success("Template excluído.");
+    try {
+      await deleteSavedTemplate(id);
+      const updated = templates.filter((t) => t.id !== id);
+      setTemplates(updated);
+      const deletedTemplate = templates.find((t) => t.id === id);
+      if (deletedTemplate && pinned.some((pin) => pin.id === id)) {
+        togglePinTemplate({ id: deletedTemplate.id, title: deletedTemplate.title });
+        setPinned(getPinnedTemplates());
+        window.dispatchEvent(new Event("pinned-updated"));
+      }
+      toast.success("Template excluido.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
   };
 
   const handlePin = (e: React.MouseEvent, t: SavedTemplate) => {
@@ -545,17 +554,6 @@ function TemplatesTab() {
   const isPinned = (id: string) => pinned.some((p) => p.id === id);
 
   const handleCreateTemplate = () => {
-    setClients(getClientList());
-    setShowClientPicker(true);
-  };
-
-  const handleCreateTemplateForClient = (client: SavedClient) => {
-    setShowClientPicker(false);
-    navigate(`/editor?type=template&clientId=${client.id}&draftId=${crypto.randomUUID()}`);
-  };
-
-  const handleCreateTemplateWithoutClient = () => {
-    setShowClientPicker(false);
     navigate(`/editor?type=template&draftId=${crypto.randomUUID()}`);
   };
 
@@ -581,46 +579,6 @@ function TemplatesTab() {
           Novo Template
         </Button>
       </div>
-
-      <Dialog open={showClientPicker} onOpenChange={setShowClientPicker}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Escolha o cliente</DialogTitle>
-            <DialogDescription>
-              O template será criado exibindo as variáveis reais do cliente selecionado.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 max-h-[360px] overflow-y-auto">
-            <button
-              onClick={handleCreateTemplateWithoutClient}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-border hover:border-primary/40 hover:bg-accent/50 transition-all text-left"
-            >
-              <Braces className="h-5 w-5 text-primary shrink-0" />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-foreground truncate">Sem cliente</p>
-                <p className="text-xs text-muted-foreground">
-                  Usar variáveis sem dados preenchidos
-                </p>
-              </div>
-            </button>
-            {clients.map((client) => (
-              <button
-                key={client.id}
-                onClick={() => handleCreateTemplateForClient(client)}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-border hover:border-primary/40 hover:bg-accent/50 transition-all text-left"
-              >
-                <Users className="h-5 w-5 text-primary shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-foreground truncate">{client.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {client.values.nome_cliente || "Cliente sem nome preenchido"}
-                  </p>
-                </div>
-              </button>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {filteredTemplates.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
@@ -717,15 +675,34 @@ function ClientsTab() {
   const [variables, setVariables] = useState<CustomVariable[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [draftValues, setDraftValues] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   useEffect(() => {
-    const loadedClients = getClientList();
-    setClients(loadedClients);
     setVariables(getAvailableVariables());
-    if (loadedClients.length > 0) {
-      setSelectedClientId(loadedClients[0].id);
-      setDraftValues(loadedClients[0].values);
+
+    let ignore = false;
+    async function loadClients() {
+      try {
+        const loadedClients = await getClientList();
+        if (ignore) return;
+        setClients(loadedClients);
+        if (loadedClients.length > 0) {
+          setSelectedClientId(loadedClients[0].id);
+          setDraftValues(loadedClients[0].values);
+        }
+      } catch (error) {
+        toast.error(getApiErrorMessage(error));
+      } finally {
+        if (!ignore) setIsLoading(false);
+      }
     }
+
+    void loadClients();
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   const selectedClient = clients.find((client) => client.id === selectedClientId) || null;
@@ -736,73 +713,154 @@ function ClientsTab() {
     setDraftValues({ ...client.values });
   };
 
-  const handleSaveClient = () => {
+  const handleCreateClient = async () => {
+    const name = makeUniqueTitle("Novo cliente", clients.map((client) => client.name));
+    const values = { nome_cliente: name };
+    setIsSaving(true);
+    try {
+      const created = await createClient({ name, values });
+      setClients((current) => [created, ...current]);
+      setSelectedClientId(created.id);
+      setDraftValues(created.values);
+      toast.success("Cliente criado.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveClient = async () => {
     if (!selectedClient) return;
-    const updatedClients = clients.map((client) =>
-      client.id === selectedClient.id
-        ? { ...client, values: draftValues, updatedAt: new Date().toISOString() }
-        : client
-    );
-    setClients(updatedClients);
-    saveClientList(updatedClients);
-    toast.success("Dados do cliente salvos.");
+    setIsSaving(true);
+    try {
+      const updated = await updateClient({
+        ...selectedClient,
+        name: draftValues.nome_cliente?.trim() || selectedClient.name,
+        values: draftValues,
+      });
+      setClients((current) =>
+        current.map((client) => (client.id === updated.id ? updated : client))
+      );
+      setSelectedClientId(updated.id);
+      setDraftValues(updated.values);
+      toast.success("Dados do cliente salvos.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteClient = async () => {
+    if (!selectedClient) return;
+    setIsSaving(true);
+    try {
+      await deleteClient(selectedClient.id);
+      const remainingClients = clients.filter((client) => client.id !== selectedClient.id);
+      setClients(remainingClients);
+      const nextClient = remainingClients[0] || null;
+      setSelectedClientId(nextClient?.id || null);
+      setDraftValues(nextClient?.values || {});
+      setShowDeleteDialog(false);
+      toast.success("Cliente excluido.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-5">
-      <div className="space-y-2">
-        {clients.map((client) => {
-          const isSelected = client.id === selectedClientId;
-          return (
-            <button
-              key={client.id}
-              onClick={() => handleSelectClient(client)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-[background-color,border-color,box-shadow,transform] duration-[var(--duration-base)] [transition-timing-function:var(--ease-out-quart)] hover:-translate-y-0.5 active:scale-[0.99] ${
-                isSelected
-                  ? "border-primary/50 bg-primary/10 shadow-sm"
-                  : "border-border bg-card hover:border-primary/30 hover:bg-accent/40"
-              }`}
-            >
-              <div
-                className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 transition-[background-color,transform] duration-[var(--duration-base)] [transition-timing-function:var(--ease-out-quart)] ${
-                  isSelected ? "bg-primary/15 scale-105" : "bg-primary/10"
-                }`}
-              >
-                <UserRound className="h-4 w-4 text-primary" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{client.name}</p>
-                <p className="text-xs text-muted-foreground">{formatDate(client.updatedAt)}</p>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div key={`client-header-${selectedClient?.id || "empty"}`} className="min-w-0 client-switch-motion">
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-primary" />
-              <h3 className="text-sm font-semibold text-foreground truncate">
-                {selectedClient?.name || "Selecione um cliente"}
-              </h3>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Preencha os valores reais usados nos templates.
-            </p>
-          </div>
-          <Button onClick={handleSaveClient} size="sm" className="gap-2" disabled={!selectedClient}>
-            <Save className="h-4 w-4" />
-            Salvar
+    <>
+      <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-5">
+        <div className="space-y-3">
+          <Button onClick={handleCreateClient} size="sm" className="w-full gap-2" disabled={isSaving}>
+            <Plus className="h-4 w-4" />
+            Novo Cliente
           </Button>
+
+          <div className="space-y-2">
+            {isLoading ? (
+              <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+                Carregando clientes...
+              </div>
+            ) : clients.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
+                Nenhum cliente cadastrado.
+              </div>
+            ) : (
+              clients.map((client) => {
+                const isSelected = client.id === selectedClientId;
+                return (
+                  <button
+                    key={client.id}
+                    onClick={() => handleSelectClient(client)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-[background-color,border-color,box-shadow,transform] duration-[var(--duration-base)] [transition-timing-function:var(--ease-out-quart)] hover:-translate-y-0.5 active:scale-[0.99] ${
+                      isSelected
+                        ? "border-primary/50 bg-primary/10 shadow-sm"
+                        : "border-border bg-card hover:border-primary/30 hover:bg-accent/40"
+                    }`}
+                  >
+                    <div
+                      className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 transition-[background-color,transform] duration-[var(--duration-base)] [transition-timing-function:var(--ease-out-quart)] ${
+                        isSelected ? "bg-primary/15 scale-105" : "bg-primary/10"
+                      }`}
+                    >
+                      <UserRound className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{client.name}</p>
+                      <p className="text-xs text-muted-foreground">{formatDate(client.updatedAt)}</p>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
         </div>
 
-        <div
-          key={`client-form-${selectedClient?.id || "empty"}`}
-          className="p-5 grid grid-cols-1 md:grid-cols-2 gap-4 client-switch-motion"
-        >
-          {variables.map((variable, index) => (
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div key={`client-header-${selectedClient?.id || "empty"}`} className="min-w-0 client-switch-motion">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold text-foreground truncate">
+                  {selectedClient?.name || "Selecione um cliente"}
+                </h3>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Preencha os campos que existem na API Laravel.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setShowDeleteDialog(true)}
+                size="sm"
+                variant="outline"
+                className="gap-2 text-destructive hover:text-destructive"
+                disabled={!selectedClient || isSaving}
+              >
+                <Trash2 className="h-4 w-4" />
+                Excluir
+              </Button>
+              <Button onClick={handleSaveClient} size="sm" className="gap-2" disabled={!selectedClient || isSaving}>
+                <Save className="h-4 w-4" />
+                {isSaving ? "Salvando..." : "Salvar"}
+              </Button>
+            </div>
+          </div>
+
+          <div
+            key={`client-form-${selectedClient?.id || "empty"}`}
+            className="p-5 grid grid-cols-1 md:grid-cols-2 gap-4 client-switch-motion"
+          >
+            {!selectedClient && !isLoading && (
+              <div className="md:col-span-2 rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+                Crie ou selecione um cliente para editar.
+              </div>
+            )}
+            {selectedClient && variables.map((variable, index) => (
             <div
               key={variable.key}
               className="space-y-1.5 client-field-motion"
@@ -820,13 +878,34 @@ function ClientsTab() {
                   }))
                 }
                 placeholder={`Valor para {{${variable.key}}}`}
-                disabled={!selectedClient}
+                disabled={!selectedClient || isSaving}
               />
             </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir cliente</AlertDialogTitle>
+            <AlertDialogDescription>
+              O cliente sera excluido do back-end Laravel. Documentos ja criados nao serao removidos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteClient}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 

@@ -1,17 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { FileDown, Pin, PinOff, Save, Upload, Trash2, Eraser, Image } from "lucide-react";
 import { useRef } from "react";
-import type { SavedClient } from "@/lib/clients";
-
-const NO_TEMPLATE_CLIENT = "__none__";
 
 interface SettingsSidebarProps {
   onExportPdf: () => void;
@@ -31,9 +21,6 @@ interface SettingsSidebarProps {
   isTemplatePinned?: boolean;
   canManageTemplate?: boolean;
   canDeleteDocument?: boolean;
-  clients?: SavedClient[];
-  selectedClientId?: string | null;
-  onTemplateClientChange?: (clientId: string | null) => void;
 }
 
 export function SettingsSidebar({
@@ -54,9 +41,6 @@ export function SettingsSidebar({
   isTemplatePinned = false,
   canManageTemplate = false,
   canDeleteDocument = false,
-  clients = [],
-  selectedClientId = null,
-  onTemplateClientChange,
 }: SettingsSidebarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -103,31 +87,6 @@ export function SettingsSidebar({
             />
           </div>
 
-          {isTemplateMode && (
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">
-                Cliente do template
-              </label>
-              <Select
-                value={selectedClientId || NO_TEMPLATE_CLIENT}
-                onValueChange={(value) =>
-                  onTemplateClientChange?.(value === NO_TEMPLATE_CLIENT ? null : value)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um cliente" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NO_TEMPLATE_CLIENT}>Sem cliente</SelectItem>
-                  {clients.map((client) => (
-                    <SelectItem key={client.id} value={client.id}>
-                      {client.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
         </section>
 
         <section className="space-y-3">

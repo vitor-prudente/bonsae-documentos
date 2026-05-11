@@ -8,15 +8,22 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getPinnedTemplates, togglePinTemplate } from "@/components/AppSidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
-import {
-  getDocumentList,
-  saveDocumentList,
-  getTemplateList,
-  saveTemplateList,
-  type SavedDocument,
-  type SavedTemplate,
-} from "@/pages/Documents";
+import { getApiErrorMessage } from "@/lib/api";
 import { getClientList, type SavedClient } from "@/lib/clients";
+import {
+  createSavedDocument,
+  deleteSavedDocument,
+  getDocumentList,
+  getSavedDocument,
+  updateSavedDocument,
+} from "@/lib/documents";
+import {
+  createSavedTemplate,
+  deleteSavedTemplate,
+  getSavedTemplate,
+  getTemplateList,
+  updateSavedTemplate,
+} from "@/lib/templates";
 import { getDraftTitleBase, makeUniqueTitle } from "@/lib/titles";
 import {
   AlertDialog,
@@ -54,6 +61,7 @@ const Index = () => {
   const [isDirty, setIsDirty] = useState(false);
   const [clients, setClients] = useState<SavedClient[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDeleteDocumentDialog, setShowDeleteDocumentDialog] = useState(false);
@@ -61,62 +69,94 @@ const Index = () => {
   const blocker = useBlocker(isDirty);
 
   useEffect(() => {
-    setClients(getClientList());
+    let ignore = false;
+    async function loadClients() {
+      try {
+        const loadedClients = await getClientList();
+        if (!ignore) setClients(loadedClients);
+      } catch (error) {
+        toast.error(getApiErrorMessage(error));
+      }
+    }
+
+    void loadClients();
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   useEffect(() => {
     if (docId) return;
-    const loadedClients = getClientList();
-    const selectedClient = loadedClients.find((client) => client.id === initialClientId);
-    const titleBase = getDraftTitleBase(isTemplate ? "template" : "document", selectedClient?.name);
-    const existingTitles = isTemplate
-      ? getTemplateList().map((template) => template.title)
-      : getDocumentList().map((document) => document.title);
 
-    setClients(loadedClients);
-    setDocumentTitle(makeUniqueTitle(titleBase, existingTitles));
-    setLetterheadUrl(null);
-    setLetterheadName(null);
-    setInitialContent("");
-    setCurrentDocId(null);
-    setSavingAsTemplate(isTemplate);
-    setSelectedClientId(isTemplate ? initialClientId : null);
-    setIsTemplatePinned(false);
-    editorRef.current?.setContent("");
-    setIsDirty(false);
+    let ignore = false;
+    async function prepareDraft() {
+      try {
+        const loadedClients = await getClientList();
+        const selectedClient = !isTemplate
+          ? loadedClients.find((client) => client.id === initialClientId)
+          : null;
+        const existingTitles = isTemplate
+          ? (await getTemplateList()).map((template) => template.title)
+          : (await getDocumentList()).map((document) => document.title);
+        const titleBase = getDraftTitleBase(isTemplate ? "template" : "document", selectedClient?.name);
+
+        if (ignore) return;
+        setClients(loadedClients);
+        setDocumentTitle(makeUniqueTitle(titleBase, existingTitles));
+        setLetterheadUrl(null);
+        setLetterheadName(null);
+        setInitialContent("");
+        setCurrentDocId(null);
+        setSavingAsTemplate(isTemplate);
+        setSelectedClientId(!isTemplate ? initialClientId : null);
+        setSelectedTemplateId(null);
+        setIsTemplatePinned(false);
+        editorRef.current?.setContent("");
+        setIsDirty(false);
+      } catch (error) {
+        toast.error(getApiErrorMessage(error));
+      }
+    }
+
+    void prepareDraft();
+    return () => {
+      ignore = true;
+    };
   }, [docId, draftId, initialClientId, isTemplate]);
 
   // Load existing document or template
   useEffect(() => {
-    if (docId) {
-      const docs = getDocumentList();
-      const doc = docs.find((d) => d.id === docId);
-      if (doc) {
-        setDocumentTitle(doc.title);
-        setLetterheadUrl(doc.letterheadUrl);
-        setLetterheadName(doc.letterheadName || null);
-        setInitialContent(doc.html);
-        setCurrentDocId(doc.id);
-        setSavingAsTemplate(false);
-        setSelectedClientId(doc.clientId || null);
+    if (!docId) return;
+
+    let ignore = false;
+    async function loadFile() {
+      try {
+        const file = isTemplate ? await getSavedTemplate(docId) : await getSavedDocument(docId);
+        if (ignore) return;
+        setDocumentTitle(file.title);
+        setLetterheadUrl(file.letterheadUrl);
+        setLetterheadName(file.letterheadName || null);
+        setInitialContent(file.html);
+        setCurrentDocId(file.id);
+        setSavingAsTemplate(isTemplate);
+        setSelectedClientId(null);
+        setSelectedTemplateId(null);
+
+        if (!isTemplate && "clientId" in file) {
+          setSelectedClientId(file.clientId || null);
+          setSelectedTemplateId(file.templateId || null);
+        }
         setIsDirty(false);
-        return;
-      }
-      // Check templates
-      const templates = getTemplateList();
-      const tmpl = templates.find((t) => t.id === docId);
-      if (tmpl) {
-        setDocumentTitle(tmpl.title);
-        setLetterheadUrl(tmpl.letterheadUrl);
-        setLetterheadName(tmpl.letterheadName || null);
-        setInitialContent(tmpl.html);
-        setCurrentDocId(tmpl.id);
-        setSavingAsTemplate(true);
-        setSelectedClientId(tmpl.clientId || null);
-        setIsDirty(false);
+      } catch (error) {
+        toast.error(getApiErrorMessage(error));
       }
     }
-  }, [docId]);
+
+    void loadFile();
+    return () => {
+      ignore = true;
+    };
+  }, [docId, isTemplate]);
 
   const selectedClientValues = useMemo(
     () =>
@@ -158,7 +198,7 @@ const Index = () => {
       const html2pdf = (await import("html2pdf.js")).default;
       await html2pdf()
         .set({
-          margin: [10, 10, 10, 10],
+          margin: [3, 3, 3, 3],
           filename: `${documentTitle || "documento"}.pdf`,
           image: { type: "jpeg", quality: 0.98 },
           html2canvas: { scale: 1.5, useCORS: true },
@@ -174,53 +214,79 @@ const Index = () => {
     }
   }, [documentTitle, isExporting]);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     const html = editorRef.current?.getHTML() || "";
-    const now = new Date().toISOString();
 
     if (savingAsTemplate) {
-      const templates = getTemplateList();
-      if (currentDocId) {
-        const idx = templates.findIndex((t) => t.id === currentDocId);
-        if (idx !== -1) {
-          templates[idx] = { ...templates[idx], title: documentTitle, html, letterheadUrl, letterheadName, updatedAt: now, clientId: selectedClientId };
-        } else {
-          const newT: SavedTemplate = { id: crypto.randomUUID(), title: documentTitle, html, letterheadUrl, letterheadName, updatedAt: now, clientId: selectedClientId };
-          templates.unshift(newT);
-          setCurrentDocId(newT.id);
-        }
-      } else {
-        const newT: SavedTemplate = { id: crypto.randomUUID(), title: documentTitle, html, letterheadUrl, letterheadName, updatedAt: now, clientId: selectedClientId };
-        templates.unshift(newT);
-        setCurrentDocId(newT.id);
+      try {
+        const savedTemplate = currentDocId
+          ? await updateSavedTemplate({
+              id: currentDocId,
+              title: documentTitle,
+              html,
+              letterheadUrl,
+              letterheadName,
+              updatedAt: new Date().toISOString(),
+            })
+          : await createSavedTemplate({
+              title: documentTitle,
+              html,
+              letterheadUrl,
+              letterheadName,
+            });
+
+        setCurrentDocId(savedTemplate.id);
+        setDocumentTitle(savedTemplate.title);
+        setLetterheadUrl(savedTemplate.letterheadUrl);
+        setLetterheadName(savedTemplate.letterheadName || null);
+        setIsDirty(false);
+        toast.success("Template salvo!");
+      } catch (error) {
+        toast.error(getApiErrorMessage(error));
       }
-      saveTemplateList(templates);
-      toast.success("Template salvo!");
-    } else {
-      const docs = getDocumentList();
-      if (currentDocId) {
-        const idx = docs.findIndex((d) => d.id === currentDocId);
-        if (idx !== -1) {
-          docs[idx] = { ...docs[idx], title: documentTitle, html, letterheadUrl, letterheadName, updatedAt: now, clientId: selectedClientId };
-        }
-      } else {
-        const newDoc: SavedDocument = { id: crypto.randomUUID(), title: documentTitle, html, letterheadUrl, letterheadName, updatedAt: now, clientId: selectedClientId };
-        docs.unshift(newDoc);
-        setCurrentDocId(newDoc.id);
-      }
-      saveDocumentList(docs);
-      toast.success("Documento salvo!");
+      return;
     }
 
-    setIsDirty(false);
-  }, [letterheadUrl, letterheadName, documentTitle, currentDocId, savingAsTemplate, selectedClientId]);
+    try {
+      const savedDocument = currentDocId
+        ? await updateSavedDocument({
+            id: currentDocId,
+            title: documentTitle,
+            html,
+            letterheadUrl,
+            letterheadName,
+            updatedAt: new Date().toISOString(),
+            clientId: selectedClientId,
+            templateId: selectedTemplateId,
+          })
+        : await createSavedDocument({
+            title: documentTitle,
+            html,
+            letterheadUrl,
+            letterheadName,
+            clientId: selectedClientId,
+            templateId: selectedTemplateId,
+          });
+
+      setCurrentDocId(savedDocument.id);
+      setDocumentTitle(savedDocument.title);
+      setLetterheadUrl(savedDocument.letterheadUrl);
+      setLetterheadName(savedDocument.letterheadName || null);
+      setSelectedClientId(savedDocument.clientId || null);
+      setSelectedTemplateId(savedDocument.templateId || null);
+      setIsDirty(false);
+      toast.success("Documento salvo!");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  }, [letterheadUrl, letterheadName, documentTitle, currentDocId, savingAsTemplate, selectedClientId, selectedTemplateId]);
 
   // Ctrl+S / Cmd+S keyboard shortcut
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
         e.preventDefault();
-        handleSave();
+        void handleSave();
       }
     };
     document.addEventListener("keydown", handleKeyDown);
@@ -238,6 +304,7 @@ const Index = () => {
     setInitialContent("");
     setCurrentDocId(null);
     setSelectedClientId(null);
+    setSelectedTemplateId(null);
     setIsTemplatePinned(false);
     editorRef.current?.setContent("");
     setIsDirty(false);
@@ -267,14 +334,16 @@ const Index = () => {
     setShowDeleteDocumentDialog(true);
   }, [savingAsTemplate, currentDocId, navigate]);
 
-  const confirmDeleteDocument = useCallback(() => {
+  const confirmDeleteDocument = useCallback(async () => {
     if (!currentDocId) return;
-    const docs = getDocumentList();
-    const updatedDocs = docs.filter((doc) => doc.id !== currentDocId);
-    saveDocumentList(updatedDocs);
-    setIsDirty(false);
-    toast.success("Documento excluído.");
-    navigate("/?tab=documents");
+    try {
+      await deleteSavedDocument(currentDocId);
+      setIsDirty(false);
+      toast.success("Documento excluído.");
+      navigate("/?tab=documents");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
   }, [currentDocId, navigate]);
 
   const handleDeleteTemplate = useCallback(() => {
@@ -288,31 +357,28 @@ const Index = () => {
     setShowDeleteDialog(true);
   }, [savingAsTemplate, currentDocId, navigate]);
 
-  const confirmDeleteTemplate = useCallback(() => {
+  const confirmDeleteTemplate = useCallback(async () => {
     if (!savingAsTemplate || !currentDocId) return;
 
-    const templates = getTemplateList();
-    const updatedTemplates = templates.filter((template) => template.id !== currentDocId);
-    saveTemplateList(updatedTemplates);
+    try {
+      await deleteSavedTemplate(currentDocId);
 
-    const pinned = getPinnedTemplates();
-    if (pinned.some((pin) => pin.id === currentDocId)) {
-      togglePinTemplate({ id: currentDocId, title: documentTitle });
-      window.dispatchEvent(new Event("pinned-updated"));
+      const pinned = getPinnedTemplates();
+      if (pinned.some((pin) => pin.id === currentDocId)) {
+        togglePinTemplate({ id: currentDocId, title: documentTitle });
+        window.dispatchEvent(new Event("pinned-updated"));
+      }
+
+      setIsDirty(false);
+      toast.success("Template excluido.");
+      navigate("/?tab=templates");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
     }
-
-    setIsDirty(false);
-    toast.success("Template excluído.");
-    navigate("/?tab=templates");
   }, [savingAsTemplate, currentDocId, documentTitle, navigate]);
 
   const handleDocumentTitleChange = useCallback((title: string) => {
     setDocumentTitle(title);
-    setIsDirty(true);
-  }, []);
-
-  const handleTemplateClientChange = useCallback((clientId: string | null) => {
-    setSelectedClientId(clientId);
     setIsDirty(true);
   }, []);
 
@@ -405,9 +471,6 @@ const Index = () => {
                 isTemplatePinned={isTemplatePinned}
                 canManageTemplate={savingAsTemplate}
                 canDeleteDocument={!savingAsTemplate}
-                clients={clients}
-                selectedClientId={selectedClientId}
-                onTemplateClientChange={handleTemplateClientChange}
               />
             </div>
           )
@@ -438,9 +501,6 @@ const Index = () => {
               isTemplatePinned={isTemplatePinned}
               canManageTemplate={savingAsTemplate}
               canDeleteDocument={!savingAsTemplate}
-              clients={clients}
-              selectedClientId={selectedClientId}
-              onTemplateClientChange={handleTemplateClientChange}
             />
           </div>
         )}

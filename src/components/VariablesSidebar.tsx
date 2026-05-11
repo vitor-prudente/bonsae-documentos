@@ -1,4 +1,4 @@
-import { User, CreditCard, MapPin, DollarSign, Calendar, FileText, Briefcase, BadgeCheck, Building, Gavel, type LucideIcon } from "lucide-react";
+import { User, CreditCard, MapPin, Mail, Phone, Building, type LucideIcon } from "lucide-react";
 import { variableIconMap } from "./variableIcons";
 import { useEffect, useState } from "react";
 import { getAvailableVariables, type CustomVariable } from "@/pages/Documents";
@@ -7,13 +7,9 @@ const iconComponents: Record<string, LucideIcon> = {
   user: User,
   "id-card": CreditCard,
   "map-pin": MapPin,
-  "dollar-sign": DollarSign,
-  calendar: Calendar,
-  "file-text": FileText,
-  briefcase: Briefcase,
-  "badge-check": BadgeCheck,
+  mail: Mail,
+  phone: Phone,
   building: Building,
-  gavel: Gavel,
 };
 
 interface VariablesSidebarProps {
@@ -28,16 +24,19 @@ export function VariablesSidebar({ variableValues = {} }: VariablesSidebarProps)
   }, []);
 
   const handleDragStart = (e: React.DragEvent, variable: CustomVariable) => {
-    e.dataTransfer.setData("text/plain", `{{${variable.key}}}`);
+    const value = variableValues[variable.key]?.trim() || "";
+    e.dataTransfer.setData("text/plain", value || `{{${variable.key}}}`);
     e.dataTransfer.setData("application/x-variable", variable.key);
     e.dataTransfer.setData("application/x-variable-label", variable.label);
+    e.dataTransfer.setData("application/x-variable-value", value);
     e.dataTransfer.effectAllowed = "copy";
   };
 
   const handleInsertClick = (variable: CustomVariable) => {
+    const value = variableValues[variable.key]?.trim() || "";
     window.dispatchEvent(
       new CustomEvent("insert-variable", {
-        detail: { key: variable.key, label: variable.label },
+        detail: { key: variable.key, label: variable.label, value },
       })
     );
   };
