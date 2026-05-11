@@ -1,7 +1,9 @@
 const DEFAULT_API_BASE_URL = "http://127.0.0.1:8000/api";
 
 export const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_API_URL ||
+  DEFAULT_API_BASE_URL
 ).replace(/\/$/, "");
 
 const AUTH_TOKEN_KEY = "bonsae-auth-token";
@@ -181,7 +183,7 @@ async function requestJson<T>(path: string, options: RequestInit = {}): Promise<
     });
   } catch {
     throw new ApiError(
-      "Não foi possível conectar ao back-end Laravel. Confirme se o servidor está rodando em http://127.0.0.1:8000.",
+      `Não foi possível conectar ao back-end Laravel. URL usada: ${API_BASE_URL}.`,
       0
     );
   }
