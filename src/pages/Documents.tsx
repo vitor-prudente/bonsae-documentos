@@ -725,7 +725,7 @@ function ClientsTab() {
     <>
       <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-5">
         <div className="space-y-3">
-          <div className="space-y-2">
+          <div className="space-y-2 pt-1">
             {isLoading ? (
               <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
                 Carregando clientes...
