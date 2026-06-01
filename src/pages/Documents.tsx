@@ -9,16 +9,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Plus, FileText, Trash2, Search, Pin, PinOff, Variable, LayoutTemplate, ArrowRight, Users, UserRound, Save, Braces } from "lucide-react";
 import { toast } from "sonner";
 import bonsaiImg from "@/assets/bonsai-empty.png";
@@ -33,8 +23,6 @@ import {
 } from "@/lib/documents";
 import {
   CLIENT_VARIABLES,
-  createClient,
-  deleteClient,
   getClientList,
   updateClient,
   type SavedClient,
@@ -44,7 +32,6 @@ import {
   getTemplateList,
   type SavedTemplate,
 } from "@/lib/templates";
-import { makeUniqueTitle } from "@/lib/titles";
 
 const VARIABLE_LIST_KEY = "bonsae-variable-list";
 
@@ -677,7 +664,6 @@ function ClientsTab() {
   const [draftValues, setDraftValues] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   useEffect(() => {
     setVariables(getAvailableVariables());
@@ -713,23 +699,6 @@ function ClientsTab() {
     setDraftValues({ ...client.values });
   };
 
-  const handleCreateClient = async () => {
-    const name = makeUniqueTitle("Novo cliente", clients.map((client) => client.name));
-    const values = { nome_cliente: name };
-    setIsSaving(true);
-    try {
-      const created = await createClient({ name, values });
-      setClients((current) => [created, ...current]);
-      setSelectedClientId(created.id);
-      setDraftValues(created.values);
-      toast.success("Cliente criado.");
-    } catch (error) {
-      toast.error(getApiErrorMessage(error));
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   const handleSaveClient = async () => {
     if (!selectedClient) return;
     setIsSaving(true);
@@ -752,34 +721,10 @@ function ClientsTab() {
     }
   };
 
-  const handleDeleteClient = async () => {
-    if (!selectedClient) return;
-    setIsSaving(true);
-    try {
-      await deleteClient(selectedClient.id);
-      const remainingClients = clients.filter((client) => client.id !== selectedClient.id);
-      setClients(remainingClients);
-      const nextClient = remainingClients[0] || null;
-      setSelectedClientId(nextClient?.id || null);
-      setDraftValues(nextClient?.values || {});
-      setShowDeleteDialog(false);
-      toast.success("Cliente excluido.");
-    } catch (error) {
-      toast.error(getApiErrorMessage(error));
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   return (
     <>
       <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-5">
         <div className="space-y-3">
-          <Button onClick={handleCreateClient} size="sm" className="w-full gap-2" disabled={isSaving}>
-            <Plus className="h-4 w-4" />
-            Novo Cliente
-          </Button>
-
           <div className="space-y-2">
             {isLoading ? (
               <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
@@ -834,16 +779,6 @@ function ClientsTab() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button
-                onClick={() => setShowDeleteDialog(true)}
-                size="sm"
-                variant="outline"
-                className="gap-2 text-destructive hover:text-destructive"
-                disabled={!selectedClient || isSaving}
-              >
-                <Trash2 className="h-4 w-4" />
-                Excluir
-              </Button>
               <Button onClick={handleSaveClient} size="sm" className="gap-2" disabled={!selectedClient || isSaving}>
                 <Save className="h-4 w-4" />
                 {isSaving ? "Salvando..." : "Salvar"}
@@ -857,7 +792,7 @@ function ClientsTab() {
           >
             {!selectedClient && !isLoading && (
               <div className="md:col-span-2 rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-                Crie ou selecione um cliente para editar.
+                Selecione um cliente para editar.
               </div>
             )}
             {selectedClient && variables.map((variable, index) => (
@@ -886,25 +821,6 @@ function ClientsTab() {
         </div>
       </div>
 
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir cliente</AlertDialogTitle>
-            <AlertDialogDescription>
-              O cliente sera excluido do back-end Laravel. Documentos ja criados nao serao removidos.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteClient}
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-            >
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }
